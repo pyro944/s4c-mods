@@ -4,10 +4,8 @@ var util = modding_core.modules.mod_sex_scenes_util
 var Participants = util.Participants
 var mod_path = util.ModPath
 
-# Extend rebuildparticipantslist instead of startsequence becuase tw_kennels
-# changes the interface for startsequence.
-func rebuildparticipantslist():
-    .rebuildparticipantslist()
+func startsequence(actors):
+    .startsequence(actors)
 
     var scene = choose_scene(participants)
     var bg = scene.images[randi() % scene.images.size()]
@@ -18,6 +16,8 @@ func choose_scene(participants):
     var best_scene_placeholders = 999
     var scenes = modding_core.modules.mod_sex_scenes_user_scenes.Scenes
     for scene in scenes:
+        if scene.participants.size() != participants.size():
+            continue
         var current_placeholders = 0
         var actor_types = extract_placeholders(scene)
         var remaining_participants = participants.duplicate()
