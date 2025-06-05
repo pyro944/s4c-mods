@@ -20,4 +20,28 @@ Copy the `SexScenes` folder to your mods directory.
 
 Background images should have a 16:9 ratio (eg 1920x1080). Place them in the `bg` folder.
 
-Configure scenes and participants by following the instructions in `user/custom_scenes.gd`.
+Participants in a scene are defined in the file name of the image. For example, a scene
+involving Aire and Anastasia could be named:
+
+```
+scene1 [Aire, Anastasia].png
+```
+
+The only requirement is that there is one set of square brackets containing the names of the
+participants, separated by commas (`,`).
+
+You can also use placeholders if you don't want to use a specific name. For example, a scene
+involving the male main character and Cali could be:
+
+```
+scene2 [MALE_MC, Cali].png
+```
+
+Supported placeholders are:
+
+- `MALE_MC`
+- `FEMALE_MC`
+- `FUTA_MC`
+- `ANY_MALE`
+- `ANY_FEMALE`
+- `ANY_FUTA`
