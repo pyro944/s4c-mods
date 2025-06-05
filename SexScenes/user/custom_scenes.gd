@@ -14,10 +14,11 @@ func load_scenes():
     var combined_scenes = {}
     for file in files:
         var scene = to_bg_scene(file)
-        var key = scene.participants.hash()
-        if not combined_scenes.has(key):
-            combined_scenes[key] = []
-        combined_scenes[key].append(scene)
+        if scene != null:
+            var key = scene.participants.hash()
+            if not combined_scenes.has(key):
+                combined_scenes[key] = []
+            combined_scenes[key].append(scene)
 
     for key in combined_scenes.keys():
         var participants = []
@@ -45,6 +46,8 @@ func to_bg_scene(file_name):
     # Grab the text between [ and ]
     var start_index = file_name.find('[')
     var end_index = file_name.find(']')
+    if start_index >= end_index:
+        return null
     var raw_tags = file_name.substr(start_index + 1, end_index - start_index - 1)
 
     var participants = []
