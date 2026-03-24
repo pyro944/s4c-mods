@@ -1,0 +1,32 @@
+0.1.0
+- Initial version.
+
+0.2.0
+- Use default tags only when nothing is provided by the user.
+- Rename the "Style" field to "Positive prompt".
+
+0.2.1
+- Fix unclickable nude controls.
+- Add support for fur and scale coverage.
+
+0.2.2
+- Remove remaining non-optional framing directives.
+- Add support for Aric's expansion races.
+
+0.2.3
+- Remove redundant tail and wings tags.
+- Source ear type and penis type from stats.
+- Support pupil shape.
+
+0.3.0
+- Move button position to accommodate UI update.
+- Support facial hair.
+- Remove almost all default/opinionated tags.
+- Remove default weights and syntax selection.
+- Improve coverage for less common body parts and colors.
+
+0.3.1
+- Minor adjustments to how colored body parts and age are handled
+
+1.0.0
+- Add ComfyUI integration.
