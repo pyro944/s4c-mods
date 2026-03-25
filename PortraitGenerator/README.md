@@ -93,7 +93,6 @@ Feel free to edit the prompts as you see fit. The game will not overwrite them u
 - The current release is pretty rough around the edges. You will find bugs. Please report them here.
 - Right now, there's no support for any LoRAs. This means a lot of races are just not going to give you good results. I hope to add LoRA support in the future.
 - If you close the image preview without saving, the mod _will not_ remember that image. If you want to get it back, go find it in the ComfyUI app, which should still have it saved.
-- The mod will remember your preferences within a game session, but it will forget them as soon as you quit.
 
 ## Troubleshooting
 

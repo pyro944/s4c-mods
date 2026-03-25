@@ -156,6 +156,7 @@ func _setup_comfyui_client():
 
 func toggle_prompt_panel():
     if not prompt_popup.visible:
+        _load_ui_settings()
         _refresh_comfyui_status()
         _update_button_states()
         prompt_popup.popup()
@@ -174,7 +175,8 @@ func _refresh_comfyui_status():
             comfyui_connect_button.set_text("Connect")
             comfyui_url_input.set_editable(true)
 
-func generate_prompts(force = false):
+func _generate_prompts(force = false):
+    _save_ui_settings()
     var style = positive_input.text
     var clothing = clothing_input.text
     var negative = negative_input.text
@@ -316,13 +318,13 @@ func build_prompt_panel():
 
     var generate_prompts_button = Button.new()
     generate_prompts_button.set_text("Generate Prompts")
-    generate_prompts_button.connect('pressed', self , 'generate_prompts', [true])
+    generate_prompts_button.connect('pressed', self , '_generate_prompts', [true])
     left_col.add_child(generate_prompts_button)
 
-    left_col.add_child(build_prompt_output(PromptOutput.CLOTHED, "Clothed Prompt"))
-    left_col.add_child(build_prompt_output(PromptOutput.CLOTHED_NEGATIVE, "Clothed Negative Prompt"))
-    left_col.add_child(build_prompt_output(PromptOutput.NUDE, "Nude Prompt"))
-    left_col.add_child(build_prompt_output(PromptOutput.NUDE_NEGATIVE, "Nude Negative Prompt"))
+    left_col.add_child(_build_prompt_output(PromptOutput.CLOTHED, "Clothed Prompt"))
+    left_col.add_child(_build_prompt_output(PromptOutput.CLOTHED_NEGATIVE, "Clothed Negative Prompt"))
+    left_col.add_child(_build_prompt_output(PromptOutput.NUDE, "Nude Prompt"))
+    left_col.add_child(_build_prompt_output(PromptOutput.NUDE_NEGATIVE, "Nude Negative Prompt"))
 
     # Thin panel acting as a column divider; VSeparator uses a scrollbar-like theme style
     var vsep = Panel.new()
@@ -471,7 +473,7 @@ func build_preview_popup():
 
     return popup
 
-func build_prompt_output(output_type, description):
+func _build_prompt_output(output_type, description):
     var total_layout = VBoxContainer.new()
 
     var label = Label.new()
@@ -490,19 +492,19 @@ func build_prompt_output(output_type, description):
         PromptOutput.CLOTHED:
             clothed_prompt_output = output
             _clothed_prompt_placeholder = ph
-            copy_button.connect('pressed', self , 'copy_prompt_type_pressed', [PromptOutput.CLOTHED])
+            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.CLOTHED])
         PromptOutput.CLOTHED_NEGATIVE:
             clothed_negative_prompt_output = output
             _clothed_negative_prompt_placeholder = ph
-            copy_button.connect('pressed', self , 'copy_prompt_type_pressed', [PromptOutput.CLOTHED_NEGATIVE])
+            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.CLOTHED_NEGATIVE])
         PromptOutput.NUDE:
             nude_prompt_output = output
             _nude_prompt_placeholder = ph
-            copy_button.connect('pressed', self , 'copy_prompt_type_pressed', [PromptOutput.NUDE])
+            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.NUDE])
         PromptOutput.NUDE_NEGATIVE:
             nude_negative_prompt_output = output
             _nude_negative_prompt_placeholder = ph
-            copy_button.connect('pressed', self , 'copy_prompt_type_pressed', [PromptOutput.NUDE_NEGATIVE])
+            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.NUDE_NEGATIVE])
 
     output.connect("text_changed", self , "_on_output_text_changed", [output_type])
 
@@ -768,6 +770,53 @@ func _get_gen_width():
 func _get_gen_height():
     return int(height_input.text) if height_input.text.is_valid_integer() else DEFAULT_HEIGHT
 
+const SETTINGS_PATH = "user://portrait_generator_settings.json"
+
+func _save_ui_settings():
+    var data = {
+        "url": comfyui_url_input.text,
+        "steps": steps_input.text,
+        "cfg": cfg_input.text,
+        "denoise": denoise_input.text,
+        "width": width_input.text,
+        "height": height_input.text,
+        "positive_prompt": positive_input.text,
+        "negative_prompt": negative_input.text,
+    }
+    var file = File.new()
+    if file.open(SETTINGS_PATH, File.WRITE) == OK:
+        file.store_string(JSON.print(data))
+        file.close()
+
+func _load_ui_settings():
+    var file = File.new()
+    if not file.file_exists(SETTINGS_PATH):
+        return
+    if file.open(SETTINGS_PATH, File.READ) != OK:
+        return
+    var json = JSON.parse(file.get_as_text())
+    file.close()
+    if json.error != OK:
+        return
+    var data = json.result
+    if data.has("url"):
+        comfyui_url_input.set_text(data["url"])
+    if data.has("steps"):
+        steps_input.set_text(data["steps"])
+    if data.has("cfg"):
+        cfg_input.set_text(data["cfg"])
+    if data.has("denoise"):
+        denoise_input.set_text(data["denoise"])
+    if data.has("width"):
+        width_input.set_text(data["width"])
+    if data.has("height"):
+        height_input.set_text(data["height"])
+    if data.has("positive_prompt"):
+        positive_input.set_text(data["positive_prompt"])
+    if data.has("negative_prompt"):
+        negative_input.set_text(data["negative_prompt"])
+    # Don't save the clothing prompt because it's unlikely to be relevant to the next character
+
 func _get_selected_model():
     var idx = model_dropdown.get_selected()
     if idx < 0:
@@ -942,10 +991,11 @@ func _do_txt2img(gen_type):
     if not _txt2img_config:
         _init_txt2img_config()
     var config = _txt2img_config[gen_type]
+    _save_ui_settings()
     _current_generation_type = gen_type
     _generation_person = active_person
     _source_texture = null
-    generate_prompts()
+    _generate_prompts()
     var model = _get_selected_model()
     if model == "":
         return
@@ -972,9 +1022,10 @@ func _on_gen_nude_pregnant():
 func _do_upload_gen(gen_type, use_nude_path, show_source_in_preview, status_text):
     if comfyui_client == null or active_person == null:
         return
+    _save_ui_settings()
     _current_generation_type = gen_type
     _generation_person = active_person
-    generate_prompts()
+    _generate_prompts()
     var body_path = active_person.get_stat('body_image')
     var source_path = _get_nude_path_from_body(body_path) if use_nude_path else body_path
     _source_texture = _load_texture_from_path(source_path) if show_source_in_preview else null
@@ -1087,7 +1138,7 @@ func _on_try_again_pressed():
 
 # --- Clipboard Copy ---
 
-func copy_prompt_type_pressed(prompt_type):
+func _copy_prompt_type_pressed(prompt_type):
     match prompt_type:
         PromptOutput.CLOTHED:
             OS.clipboard = clothed_prompt_output.text
