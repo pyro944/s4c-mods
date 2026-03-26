@@ -23,6 +23,7 @@ signal connected()
 signal disconnected()
 signal connection_error(message)
 signal models_loaded(model_list)
+signal loras_loaded(lora_list)
 signal generation_complete(prompt_id)
 signal images_ready(textures)
 signal upload_complete(filename)
@@ -40,6 +41,7 @@ var _http_prompt = null
 var _http_history = null
 var _http_image = null
 var _http_upload = null
+var _http_loras = null
 
 # Sequential multi-image download state
 var _pending_images = []
@@ -80,6 +82,10 @@ func _ready():
     _http_upload = HTTPRequest.new()
     _http_upload.connect("request_completed", self , "_on_upload_response")
     add_child(_http_upload)
+
+    _http_loras = HTTPRequest.new()
+    _http_loras.connect("request_completed", self , "_on_loras_response")
+    add_child(_http_loras)
 
 func _process(_delta):
     if _ws_client != null and state != State.DISCONNECTED:
@@ -146,18 +152,39 @@ func _on_models_response(result, response_code, _headers, body):
         return
     emit_signal("models_loaded", json.result)
 
+# --- LoRA Fetching ---
+
+func fetch_loras():
+    if state == State.DISCONNECTED:
+        emit_signal("error", "Not connected to ComfyUI")
+        return
+    var url = comfyui_url + "/models/loras"
+    var err = _http_loras.request(url, [], false, HTTPClient.METHOD_GET)
+    if err != OK:
+        emit_signal("error", "Failed to request LoRA list (error %d)" % err)
+
+func _on_loras_response(result, response_code, _headers, body):
+    if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
+        emit_signal("error", "Failed to fetch LoRAs (HTTP %d)" % response_code)
+        return
+    var json = JSON.parse(body.get_string_from_utf8())
+    if json.error != OK:
+        emit_signal("error", "Failed to parse LoRA list JSON")
+        return
+    emit_signal("loras_loaded", json.result)
+
 # --- Image Generation ---
 
-func generate_image(character_name, model_name, positive_prompt, negative_prompt, image_seed = -1, width = 768, height = 1088, steps = 20, cfg = 8.0):
-    var workflow = _build_workflow(character_name, model_name, positive_prompt, negative_prompt, image_seed, width, height, steps, cfg)
+func generate_image(character_name, model_name, positive_prompt, negative_prompt, image_seed = -1, width = 768, height = 1088, steps = 20, cfg = 8.0, workflow_name = "default", loras = []):
+    var workflow = _build_workflow(character_name, model_name, positive_prompt, negative_prompt, image_seed, width, height, steps, cfg, workflow_name, loras)
     _submit_workflow(workflow)
 
-func generate_img2img(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise = 0.7, image_seed = -1, steps = 20, cfg = 8.0):
-    var workflow = _build_img2img_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg)
+func generate_img2img(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise = 0.7, image_seed = -1, steps = 20, cfg = 8.0, workflow_name = "default", loras = []):
+    var workflow = _build_img2img_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg, workflow_name, loras)
     _submit_workflow(workflow)
 
-func generate_face_crop(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed = -1, steps = 20, cfg = 8.0):
-    var workflow = _build_face_crop_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg)
+func generate_face_crop(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed = -1, steps = 20, cfg = 8.0, workflow_name = "default", loras = []):
+    var workflow = _build_face_crop_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg, workflow_name, loras)
     _submit_workflow(workflow)
 
 func _submit_workflow(workflow):
@@ -388,6 +415,22 @@ func _load_workflow(workflow_dir, workflow_name = "default"):
         return null
     return json.result
 
+func scan_workflows(workflow_dir):
+    var dir_path = _mod_path + "/workflows/" + workflow_dir
+    var dir = Directory.new()
+    if dir.open(dir_path) != OK:
+        return []
+    var names = []
+    dir.list_dir_begin(true, true)
+    var filename = dir.get_next()
+    while filename != "":
+        if filename.ends_with(".json"):
+            names.append(filename.get_basename())
+        filename = dir.get_next()
+    dir.list_dir_end()
+    names.sort()
+    return names
+
 func _populate_workflow(template, params):
     var workflow = template.duplicate(true)
     for node_id in workflow.keys():
@@ -418,6 +461,27 @@ func _populate_static_nodes(workflow, image_prefix, checkpoint):
             node["inputs"]["ckpt_name"] = checkpoint
     return workflow
 
+func _populate_loras(workflow, loras):
+    for node_id in workflow.keys():
+        var node = workflow[node_id]
+        if node.get("class_type", "") != "Power Lora Loader (rgthree)":
+            continue
+        # Remove existing lora_# entries
+        var to_erase = []
+        for key in node["inputs"].keys():
+            if key.begins_with("lora_"):
+                to_erase.append(key)
+        for key in to_erase:
+            node["inputs"].erase(key)
+        # Add configured LoRAs
+        for i in range(loras.size()):
+            node["inputs"]["lora_%d" % (i + 1)] = {
+                "on": true,
+                "lora": loras[i]["lora"],
+                "strength": loras[i]["strength"],
+            }
+    return workflow
+
 # --- Seed Resolution ---
 
 func _resolve_seed(image_seed):
@@ -429,9 +493,9 @@ func _resolve_seed(image_seed):
 
 # --- Workflow Construction ---
 
-func _build_workflow(character_name, model_name, positive_prompt, negative_prompt, image_seed, width, height, steps = 20, cfg = 8.0):
+func _build_workflow(character_name, model_name, positive_prompt, negative_prompt, image_seed, width, height, steps = 20, cfg = 8.0, workflow_name = "default", loras = []):
     image_seed = _resolve_seed(image_seed)
-    var template = _load_workflow("txt2img")
+    var template = _load_workflow("txt2img", workflow_name)
     if template == null:
         return null
     var workflow = _populate_workflow(template, {
@@ -440,32 +504,34 @@ func _build_workflow(character_name, model_name, positive_prompt, negative_promp
         "steps": steps,
         "width": width,
         "height": height,
-        "cfg": cfg,
+        "cfg_scale": cfg,
         "seed": image_seed,
     })
     workflow = _populate_static_nodes(workflow, character_name, model_name)
+    workflow = _populate_loras(workflow, loras)
     return workflow
 
-func _build_img2img_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg):
+func _build_img2img_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg, workflow_name = "default", loras = []):
     image_seed = _resolve_seed(image_seed)
-    var template = _load_workflow("img2img")
+    var template = _load_workflow("img2img", workflow_name)
     if template == null:
         return null
     var workflow = _populate_workflow(template, {
         "positive_prompt": positive_prompt,
         "negative_prompt": negative_prompt,
         "steps": steps,
-        "cfg": cfg,
+        "cfg_scale": cfg,
         "denoise": denoise,
         "source_image": source_filename,
         "seed": image_seed,
     })
     workflow = _populate_static_nodes(workflow, character_name, model_name)
+    workflow = _populate_loras(workflow, loras)
     return workflow
 
-func _build_face_crop_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg):
+func _build_face_crop_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg, workflow_name = "default", loras = []):
     image_seed = _resolve_seed(image_seed)
-    var template = _load_workflow("portrait")
+    var template = _load_workflow("portrait", workflow_name)
     if template == null:
         return null
     var workflow = _populate_workflow(template, {
@@ -474,11 +540,12 @@ func _build_face_crop_workflow(character_name, model_name, positive_prompt, nega
         "steps": steps,
         "width": 256,
         "height": 256,
-        "cfg": cfg,
+        "cfg_scale": cfg,
         "source_image": source_filename,
         "seed": image_seed
     })
     workflow = _populate_static_nodes(workflow, character_name, model_name)
+    workflow = _populate_loras(workflow, loras)
     return workflow
 
 # --- UUID Generation ---

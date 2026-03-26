@@ -136,11 +136,6 @@
       "PowerLoraLoaderHeaderWidget": {
         "type": "PowerLoraLoaderHeaderWidget"
       },
-      "lora_1": {
-        "on": true,
-        "lora": "true futa IL_epoch_10.safetensors",
-        "strength": 1
-      },
       "➕ Add Lora": "",
       "model": ["18", 0],
       "clip": ["18", 1]

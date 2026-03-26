@@ -70,6 +70,19 @@ var _current_generation_type = -1
 # Captures the person at generation dispatch time to prevent race conditions
 var _generation_person = null
 
+# Settings popup
+var settings_popup = null
+var lora_config = null
+var _available_loras = []
+var _workflow_dropdowns = {}
+var _lora_dropdown = null
+var _lora_weight_input = null
+var _lora_entries_container = null
+var _lora_subkey_dropdown = null
+var _lora_subkey_container = null
+var _current_lora_tab = "global"
+var _lora_tab_buttons = {}
+
 signal copy_pressed(prompt_type)
 
 enum PromptOutput {
@@ -105,6 +118,10 @@ func _init():
     preview_popup = build_preview_popup()
     add_child(preview_popup)
 
+    # Construct settings popup
+    settings_popup = build_settings_popup()
+    add_child(settings_popup)
+
     call_deferred("_setup_comfyui_client")
     # Add close buttons after the popups are in the scene tree so
     # get_global_rect() returns the correct screen coordinates.
@@ -113,6 +130,7 @@ func _init():
 func _add_close_buttons():
     _add_close_button_to_popup(prompt_popup)
     preview_close_btn = _add_close_button_to_popup(preview_popup)
+    _add_close_button_to_popup(settings_popup)
 
 # Loads the game's standard close button scene, adds it as a child of the
 # popup, and anchors it to the top-right corner so it tracks popup size
@@ -137,6 +155,9 @@ func _add_close_button_to_popup(popup):
 
 func _setup_comfyui_client():
     comfyui_client = modding_core.modules.PortraitGenerator_comfyui
+    lora_config = modding_core.modules.PortraitGenerator_lora_config
+    if lora_config != null:
+        lora_config.load_settings()
     if comfyui_client == null:
         return
     # Reparent into our scene tree so _process() and HTTPRequest children work
@@ -153,6 +174,7 @@ func _setup_comfyui_client():
     comfyui_client.connect("upload_complete", self , "_on_upload_complete")
     comfyui_client.connect("upload_error", self , "_on_upload_error")
     comfyui_client.connect("error", self , "_on_comfyui_error")
+    comfyui_client.connect("loras_loaded", self , "_on_loras_loaded")
 
 func toggle_prompt_panel():
     if not prompt_popup.visible:
@@ -384,6 +406,14 @@ func build_prompt_panel():
     settings_row2.add_child(_make_labeled_field("Width:", str(DEFAULT_WIDTH), "width_input"))
     settings_row2.add_child(_make_labeled_field("Height:", str(DEFAULT_HEIGHT), "height_input"))
     right_col.add_child(settings_row2)
+
+    # Settings button
+    var settings_button = Button.new()
+    settings_button.set_text("Workflow settings...")
+    settings_button.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    settings_button.set_custom_minimum_size(Vector2(0, 36))
+    settings_button.connect("pressed", self , "_on_settings_pressed")
+    right_col.add_child(settings_button)
 
     # --- Generation button groups ---
     btn_generate_body = _make_gen_button("New body", "_on_gen_body")
@@ -773,20 +803,31 @@ func _get_gen_height():
 const SETTINGS_PATH = "user://portrait_generator_settings.json"
 
 func _save_ui_settings():
-    var data = {
-        "url": comfyui_url_input.text,
-        "steps": steps_input.text,
-        "cfg": cfg_input.text,
-        "denoise": denoise_input.text,
-        "width": width_input.text,
-        "height": height_input.text,
-        "positive_prompt": positive_input.text,
-        "negative_prompt": negative_input.text,
-    }
+    var data = _read_settings_file()
+    data["url"] = comfyui_url_input.text
+    data["steps"] = steps_input.text
+    data["cfg"] = cfg_input.text
+    data["denoise"] = denoise_input.text
+    data["width"] = width_input.text
+    data["height"] = height_input.text
+    data["positive_prompt"] = positive_input.text
+    data["negative_prompt"] = negative_input.text
     var file = File.new()
     if file.open(SETTINGS_PATH, File.WRITE) == OK:
         file.store_string(JSON.print(data))
         file.close()
+
+func _read_settings_file():
+    var file = File.new()
+    if not file.file_exists(SETTINGS_PATH):
+        return {}
+    if file.open(SETTINGS_PATH, File.READ) != OK:
+        return {}
+    var json = JSON.parse(file.get_as_text())
+    file.close()
+    if json.error != OK:
+        return {}
+    return json.result if json.result is Dictionary else {}
 
 func _load_ui_settings():
     var file = File.new()
@@ -859,6 +900,7 @@ func _on_comfyui_connected():
     comfyui_connect_button.set_disabled(false)
     comfyui_url_input.set_editable(false)
     comfyui_client.fetch_models()
+    comfyui_client.fetch_loras()
 
 func _on_comfyui_disconnected():
     status_label.set_text("Status: Disconnected")
@@ -1003,7 +1045,9 @@ func _do_txt2img(gen_type):
     var neg = config[1].text
     status_label.set_text("Status: Generating %s..." % config[3])
     _disable_all_gen_buttons()
-    comfyui_client.generate_image(active_person.get_full_name(), model, pos, neg, -1, _get_gen_width(), _get_gen_height(), _get_gen_steps(), _get_gen_cfg())
+    var wf_name = lora_config.get_workflow_name("txt2img") if lora_config != null else "default"
+    var loras = lora_config.resolve_loras(active_person) if lora_config != null else []
+    comfyui_client.generate_image(active_person.get_full_name(), model, pos, neg, -1, _get_gen_width(), _get_gen_height(), _get_gen_steps(), _get_gen_cfg(), wf_name, loras)
 
 func _on_gen_body():
     _do_txt2img(GenerationType.BODY)
@@ -1073,13 +1117,17 @@ func _on_upload_complete(uploaded_filename):
         GenerationType.PORTRAIT_FROM_NUDE:
             pos = nude_prompt_output.text
             neg = nude_negative_prompt_output.text
+    var person = _generation_person if _generation_person != null else active_person
+    var loras = lora_config.resolve_loras(person) if lora_config != null and person != null else []
     if _current_generation_type == GenerationType.PORTRAIT_FROM_BODY or \
             _current_generation_type == GenerationType.PORTRAIT_FROM_NUDE:
+        var wf_name = lora_config.get_workflow_name("portrait") if lora_config != null else "default"
         status_label.set_text("Status: Generating portrait (face crop)...")
-        comfyui_client.generate_face_crop(active_person.get_full_name(), model, pos, neg, uploaded_filename, -1, _get_gen_steps(), _get_gen_cfg())
+        comfyui_client.generate_face_crop(person.get_full_name(), model, pos, neg, uploaded_filename, -1, _get_gen_steps(), _get_gen_cfg(), wf_name, loras)
     else:
+        var wf_name = lora_config.get_workflow_name("img2img") if lora_config != null else "default"
         status_label.set_text("Status: Generating (img2img)...")
-        comfyui_client.generate_img2img(active_person.get_full_name(), model, pos, neg, uploaded_filename, _get_gen_denoise(), -1, _get_gen_steps(), _get_gen_cfg())
+        comfyui_client.generate_img2img(person.get_full_name(), model, pos, neg, uploaded_filename, _get_gen_denoise(), -1, _get_gen_steps(), _get_gen_cfg(), wf_name, loras)
 
 func _on_upload_error(message):
     status_label.set_text("Upload error: " + str(message))
@@ -1111,6 +1159,257 @@ func _apply_saved_image_stat(saved_path, category, person):
             person.set_stat('body_image', saved_path)
             person.set_stat('player_selected_body', true)
     _update_page()
+
+# --- Settings Popup ---
+
+func _on_settings_pressed():
+    _refresh_workflow_dropdowns()
+    settings_popup.popup_centered()
+
+func build_settings_popup():
+    var popup = Popup.new()
+    popup.set_theme(MAIN_THEME)
+    popup.set_size(Vector2(700, 600))
+
+    var panel = Panel.new()
+    panel.set_anchors_and_margins_preset(Control.PRESET_WIDE)
+    panel.add_stylebox_override("panel", _make_panel_bg())
+    popup.add_child(panel)
+
+    var margin = MarginContainer.new()
+    margin.set_anchors_and_margins_preset(Control.PRESET_WIDE)
+    margin.add_constant_override("margin_left", 10)
+    margin.add_constant_override("margin_right", 10)
+    margin.add_constant_override("margin_top", 10)
+    margin.add_constant_override("margin_bottom", 10)
+    panel.add_child(margin)
+
+    var outer = VBoxContainer.new()
+    outer.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    outer.set_v_size_flags(Control.SIZE_EXPAND_FILL)
+    margin.add_child(outer)
+
+    var title = Label.new()
+    title.set_text("Settings")
+    title.set_align(Label.ALIGN_CENTER)
+    outer.add_child(title)
+
+    var sep1 = HSeparator.new()
+    outer.add_child(sep1)
+
+    # --- Workflow Selection ---
+    var wf_label = Label.new()
+    wf_label.set_text("Workflows")
+    outer.add_child(wf_label)
+
+    var wf_row = HBoxContainer.new()
+    wf_row.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    for type_key in ["txt2img", "img2img", "portrait"]:
+        var col = VBoxContainer.new()
+        col.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+        var lbl = Label.new()
+        lbl.set_text(type_key)
+        col.add_child(lbl)
+        var dd = OptionButton.new()
+        dd.set_theme(OPTIONS_THEME)
+        dd.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+        dd.set_custom_minimum_size(Vector2(0, 36))
+        dd.connect("item_selected", self , "_on_workflow_selected", [type_key])
+        col.add_child(dd)
+        wf_row.add_child(col)
+        _workflow_dropdowns[type_key] = dd
+    outer.add_child(wf_row)
+
+    var sep2 = HSeparator.new()
+    outer.add_child(sep2)
+
+    # --- LoRA Configuration ---
+    var lora_label = Label.new()
+    lora_label.set_text("LoRA Configuration")
+    outer.add_child(lora_label)
+
+    # Tab buttons
+    var tab_row = HBoxContainer.new()
+    for tab_name in ["global", "race", "sex"]:
+        var btn = Button.new()
+        btn.set_text(tab_name.capitalize())
+        btn.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+        btn.set_custom_minimum_size(Vector2(0, 32))
+        btn.set_toggle_mode(true)
+        btn.set_pressed(tab_name == "global")
+        btn.connect("pressed", self , "_on_lora_tab_pressed", [tab_name])
+        tab_row.add_child(btn)
+        _lora_tab_buttons[tab_name] = btn
+    outer.add_child(tab_row)
+
+    # Sub-key selector (for race/sex tabs)
+    _lora_subkey_container = HBoxContainer.new()
+    _lora_subkey_container.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    _lora_subkey_container.visible = false
+    var subkey_label = Label.new()
+    subkey_label.set_text("Filter:")
+    _lora_subkey_container.add_child(subkey_label)
+    _lora_subkey_dropdown = OptionButton.new()
+    _lora_subkey_dropdown.set_theme(OPTIONS_THEME)
+    _lora_subkey_dropdown.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    _lora_subkey_dropdown.set_custom_minimum_size(Vector2(0, 36))
+    _lora_subkey_dropdown.connect("item_selected", self , "_on_lora_subkey_changed")
+    _lora_subkey_container.add_child(_lora_subkey_dropdown)
+    outer.add_child(_lora_subkey_container)
+
+    # Scrollable LoRA entry list
+    var scroll = ScrollContainer.new()
+    scroll.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    scroll.set_v_size_flags(Control.SIZE_EXPAND_FILL)
+    outer.add_child(scroll)
+
+    _lora_entries_container = VBoxContainer.new()
+    _lora_entries_container.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    scroll.add_child(_lora_entries_container)
+
+    # Add LoRA row
+    var add_row = HBoxContainer.new()
+    add_row.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    _lora_dropdown = OptionButton.new()
+    _lora_dropdown.set_theme(OPTIONS_THEME)
+    _lora_dropdown.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    _lora_dropdown.set_custom_minimum_size(Vector2(0, 36))
+    _lora_dropdown.add_item("(connect to ComfyUI)")
+    _lora_dropdown.set_disabled(true)
+    add_row.add_child(_lora_dropdown)
+    _lora_weight_input = LineEdit.new()
+    _lora_weight_input.set_text("1.0")
+    _lora_weight_input.set_custom_minimum_size(Vector2(60, 36))
+    _lora_weight_input.cursor_set_blink_enabled(true)
+    _lora_weight_input.set_placeholder("Weight")
+    add_row.add_child(_lora_weight_input)
+    var add_btn = Button.new()
+    add_btn.set_text("Add")
+    add_btn.set_custom_minimum_size(Vector2(60, 36))
+    add_btn.connect("pressed", self , "_on_add_lora_pressed")
+    add_row.add_child(add_btn)
+    outer.add_child(add_row)
+
+    return popup
+
+func _on_loras_loaded(lora_list):
+    _available_loras = lora_list
+    _lora_dropdown.clear()
+    if lora_list.size() == 0:
+        _lora_dropdown.add_item("(no LoRAs found)")
+        _lora_dropdown.set_disabled(true)
+        return
+    _lora_dropdown.set_disabled(false)
+    for lora_name in lora_list:
+        _lora_dropdown.add_item(lora_name)
+
+func _refresh_workflow_dropdowns():
+    if comfyui_client == null:
+        return
+    for type_key in _workflow_dropdowns.keys():
+        var dd = _workflow_dropdowns[type_key]
+        dd.clear()
+        var names = comfyui_client.scan_workflows(type_key)
+        var selected_name = lora_config.get_workflow_name(type_key) if lora_config != null else "default"
+        var select_idx = 0
+        for i in range(names.size()):
+            dd.add_item(names[i])
+            if names[i] == selected_name:
+                select_idx = i
+        if names.size() > 0:
+            dd.select(select_idx)
+
+func _on_workflow_selected(index, type_key):
+    if lora_config == null:
+        return
+    var dd = _workflow_dropdowns[type_key]
+    var name = dd.get_item_text(index)
+    lora_config.set_workflow(type_key, name)
+
+# --- LoRA Tab Management ---
+
+func _on_lora_tab_pressed(tab_name):
+    _current_lora_tab = tab_name
+    for key in _lora_tab_buttons.keys():
+        _lora_tab_buttons[key].set_pressed(key == tab_name)
+    _update_lora_subkey_dropdown()
+    _rebuild_lora_entries()
+
+func _update_lora_subkey_dropdown():
+    _lora_subkey_dropdown.clear()
+    if _current_lora_tab == "global":
+        _lora_subkey_container.visible = false
+        return
+    _lora_subkey_container.visible = true
+    if _current_lora_tab == "race":
+        var race_keys = races.racelist.keys()
+        race_keys.sort()
+        for r in race_keys:
+            _lora_subkey_dropdown.add_item(r)
+    elif _current_lora_tab == "sex":
+        _lora_subkey_dropdown.add_item("male")
+        _lora_subkey_dropdown.add_item("female")
+        _lora_subkey_dropdown.add_item("futa")
+
+func _on_lora_subkey_changed(_index):
+    _rebuild_lora_entries()
+
+func _get_current_subkey():
+    if _current_lora_tab == "global":
+        return ""
+    var idx = _lora_subkey_dropdown.get_selected()
+    if idx < 0:
+        return ""
+    return _lora_subkey_dropdown.get_item_text(idx)
+
+func _rebuild_lora_entries():
+    # Clear existing entries
+    for child in _lora_entries_container.get_children():
+        child.queue_free()
+    if lora_config == null:
+        return
+    var subkey = _get_current_subkey()
+    var entries = lora_config.get_loras(_current_lora_tab, subkey)
+    for i in range(entries.size()):
+        var entry = entries[i]
+        var row = HBoxContainer.new()
+        row.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+        var name_label = Label.new()
+        name_label.set_text(entry["lora"])
+        name_label.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+        name_label.set_clip_text(true)
+        row.add_child(name_label)
+        var weight_label = Label.new()
+        weight_label.set_text(str(entry["strength"]))
+        weight_label.set_custom_minimum_size(Vector2(50, 0))
+        row.add_child(weight_label)
+        var remove_btn = Button.new()
+        remove_btn.set_text("X")
+        remove_btn.set_custom_minimum_size(Vector2(32, 32))
+        remove_btn.connect("pressed", self , "_on_remove_lora_pressed", [_current_lora_tab, subkey, i])
+        row.add_child(remove_btn)
+        _lora_entries_container.add_child(row)
+
+func _on_add_lora_pressed():
+    if lora_config == null or _lora_dropdown.get_selected() < 0:
+        return
+    if _available_loras.size() == 0:
+        return
+    var lora_name = _lora_dropdown.get_item_text(_lora_dropdown.get_selected())
+    var weight = 1.0
+    if _lora_weight_input.text.is_valid_float():
+        weight = float(_lora_weight_input.text)
+    var subkey = _get_current_subkey()
+    if _current_lora_tab != "global" and subkey == "":
+        return
+    lora_config.add_lora(_current_lora_tab, subkey, lora_name, weight)
+    _rebuild_lora_entries()
+
+func _on_remove_lora_pressed(category, subkey, index):
+    if lora_config == null:
+        return
+    lora_config.remove_lora(category, subkey, index)
+    _rebuild_lora_entries()
 
 # --- Try Again ---
 

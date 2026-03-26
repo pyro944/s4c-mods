@@ -34,11 +34,91 @@
   "4": {
     "inputs": {
       "filename_prefix": "PortraitGenerator",
-      "images": ["2", 0]
+      "images": ["17", 0]
     },
     "class_type": "SaveImage",
     "_meta": {
       "title": "Save Image"
+    }
+  },
+  "8": {
+    "inputs": {
+      "expression": "a + (b / 2)",
+      "values.a": ["2", 1],
+      "values.b": ["2", 3]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "x center"
+    }
+  },
+  "9": {
+    "inputs": {
+      "expression": "a + (b / 2)",
+      "values.a": ["2", 2],
+      "values.b": ["2", 4]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "y center"
+    }
+  },
+  "10": {
+    "inputs": {
+      "expression": "max(a, b)",
+      "values.a": ["2", 3],
+      "values.b": ["2", 4]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "dimensions"
+    }
+  },
+  "12": {
+    "inputs": {
+      "expression": "a - (b  / 2)",
+      "values.a": ["8", 1],
+      "values.b": ["10", 1]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "new x"
+    }
+  },
+  "13": {
+    "inputs": {
+      "expression": "a - (b / 2)",
+      "values.a": ["9", 1],
+      "values.b": ["10", 1]
+    },
+    "class_type": "ComfyMathExpression",
+    "_meta": {
+      "title": "new y"
+    }
+  },
+  "17": {
+    "inputs": {
+      "output_width": ["10", 1],
+      "output_height": ["10", 1],
+      "padding": 0,
+      "image": ["1", 0],
+      "bboxes": ["18", 0]
+    },
+    "class_type": "CropByBBoxes",
+    "_meta": {
+      "title": "CropByBBoxes"
+    }
+  },
+  "18": {
+    "inputs": {
+      "x": ["12", 1],
+      "y": ["13", 1],
+      "width": ["10", 1],
+      "height": ["10", 1]
+    },
+    "class_type": "PrimitiveBoundingBox",
+    "_meta": {
+      "title": "Bounding Box"
     }
   }
 }
