@@ -30,3 +30,8 @@
 
 1.0.0
 - Add ComfyUI integration.
+
+1.0.1
+- Add support for LoRAs.
+- Add support for custom workflows.
+- Add settings persistence.

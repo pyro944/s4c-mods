@@ -1292,8 +1292,12 @@ func build_settings_popup():
 
     return popup
 
+func _sort_by_lowercase(a, b):
+    return a.to_lower() < b.to_lower()
+
 func _on_loras_loaded(lora_list):
     _available_loras = lora_list
+    _available_loras.sort_custom(self , "_sort_by_lowercase")
     _lora_dropdown.clear()
     if lora_list.size() == 0:
         _lora_dropdown.add_item("(no LoRAs found)")

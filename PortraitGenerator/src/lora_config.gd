@@ -17,7 +17,7 @@ const CATEGORY_STATS = {
 var lora_config = {}
 
 # { "txt2img": "default", "img2img": "default", "portrait": "default" }
-var workflow_selections = { "txt2img": "default", "img2img": "default", "portrait": "default" }
+var workflow_selections = {"txt2img": "default", "img2img": "default", "portrait": "default"}
 
 func _init():
 	lora_config = _default_lora_config()
@@ -29,7 +29,7 @@ func update():
 # --- Defaults ---
 
 func _default_lora_config():
-	return { "global": [], "race": {}, "sex": {} }
+	return {"global": [], "race": {}, "sex": {}}
 
 # --- Accessors ---
 
@@ -43,7 +43,7 @@ func set_workflow(type_key, name):
 # --- LoRA Mutators ---
 
 func add_lora(category, key, lora_name, strength):
-	var entry = { "lora": lora_name, "strength": strength }
+	var entry = {"lora": lora_name, "strength": strength}
 	if CATEGORY_STATS.get(category) == null:
 		# Flat list category (e.g. global)
 		lora_config[category].append(entry)

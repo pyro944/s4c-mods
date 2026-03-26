@@ -1,6 +1,6 @@
 # Strive: Conquest Portrait Generator
 
-![Preview of the UI](docs/ui-preview.png)
+![Preview of the UI](example.png)
 
 This mod enables two features in Strive: Conquest:
 
@@ -85,10 +85,55 @@ Clicking any of the "New" options will produce a fresh image totally independent
 
 Feel free to edit the prompts as you see fit. The game will not overwrite them unless you press the "Generate" button again.
 
+### Advanced usage
+
+![The workflow settings panel](docs/workflow-settings.png)
+
+#### Workflows
+
+You can import your own workflows if you're comfortable working with ComfyUI. The mod expects a few specific nodes to be present:
+
+For txt2img workflows:
+
+- A `StringPrimitive` node titled `positive_prompt`.
+- A `StringPrimitive` node titled `negative_prompt`.
+- An `IntPrimitive` node titled `steps`.
+- An `IntPrimitive` node titled `seed`.
+- An `IntPrimitive` node titled `width`.
+- An `IntPrimitive` node titled `height`.
+- A `FloatPrimitive` node titled `cfg_scale`.
+- A `Power Lora Loader (rgthree)` node for loading LoRAs.
+- A `LoadCheckpoint` node that loads your checkpoint.
+
+For img2img workflows:
+
+- A `StringPrimitive` node titled `positive_prompt`.
+- A `StringPrimitive` node titled `negative_prompt`.
+- An `IntPrimitive` node titled `steps`.
+- An `IntPrimitive` node titled `seed`.
+- A `FloatPrimitive` node titled `cfg_scale`.
+- A `FloatPrimitive` node titled `denoise`.
+- A `LoadImage` node titled `source_image` that loads the source image.
+- A `Power Lora Loader (rgthree)` node for loading LoRAs.
+- A `LoadCheckpoint` node that loads your checkpoint.
+
+For portrait workflows:
+
+- A `LoadImage` node titled `source_image` that loads the source image.
+
+To import your workflow into the mod, open it in ComfyUI, go to File > Export (API), and then save it into `<mod root>/workflows/<workflow type>`. For example, save a new txt2img workflow to `<mod root>/workflows/txt2img/my-fancy-workflow.json`.
+
+To use your workflow, open the mod panel from the character info screen, click "Workflow settings...", and select your workflow from the dropdowns at the top.
+
+#### LoRAs
+
+The mod can automatically pull in any LoRAs you have installed. Currently, you can configure which LoRAs to use and at what strength based on the character's race and sex. You can also configure global LoRAs to always use regardless of the character's attributes.
+
+LoRA settings are in the "Workflow settings..." panel.
+
 ## Known limitations
 
 - The current release is pretty rough around the edges. You will find bugs. Please report them here.
-- Right now, there's no support for any LoRAs. This means a lot of races are just not going to give you good results. I hope to add LoRA support in the future.
 - If you close the image preview without saving, the mod _will not_ remember that image. If you want to get it back, go find it in the ComfyUI app, which should still have it saved.
 
 ## Troubleshooting
@@ -122,5 +167,5 @@ ComfyUI has a fairly new security scheme that seems to sometimes interfere with 
 
 ## Acknowledgements
 
-- Special thanks to **Zeep** on Discord for helping me get to know ComfyUI.
+- Special thanks to **Zeep** on Discord for helping me get to know ComfyUI and for tons of advice on workflows.
 - Special thanks to Claude Code for writing pretty nearly all of this mod.
