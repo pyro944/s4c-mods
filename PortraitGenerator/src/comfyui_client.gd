@@ -45,6 +45,8 @@ var _http_upload = null
 var _pending_images = []
 var _collected_textures = []
 
+var _mod_path = get_script().get_path().get_base_dir().get_base_dir()
+
 # The mod framwork calls update on every Node registered in the mod. This looks unnecessary, but is actually required.
 func update():
     pass
@@ -159,6 +161,8 @@ func generate_face_crop(model_name, positive_prompt, negative_prompt, source_fil
     _submit_workflow(workflow)
 
 func _submit_workflow(workflow):
+    if workflow == null:
+        return
     if state != State.CONNECTED:
         emit_signal("error", "Not connected to ComfyUI")
         return
@@ -367,7 +371,47 @@ func _on_upload_response(result, response_code, _headers, body):
     var uploaded_filename = json.result.get("name", "")
     emit_signal("upload_complete", uploaded_filename)
 
-# --- Workflow Builder ---
+# --- Workflow Loading ---
+
+func _load_workflow(workflow_dir, workflow_name = "default"):
+    var path = _mod_path + "/workflows/" + workflow_dir + "/" + workflow_name + ".json"
+    var file = File.new()
+    var err = file.open(path, File.READ)
+    if err != OK:
+        emit_signal("error", "Failed to open workflow file: %s (error %d)" % [path, err])
+        return null
+    var text = file.get_as_text()
+    file.close()
+    var json = JSON.parse(text)
+    if json.error != OK:
+        emit_signal("error", "Failed to parse workflow JSON: %s" % path)
+        return null
+    return json.result
+
+func _populate_workflow(template, params):
+    var workflow = template.duplicate(true)
+    for node_id in workflow:
+        var node = workflow[node_id]
+        if not node.has("_meta") or not node.has("widgets_values"):
+            continue
+        var title = node["_meta"].get("title", "")
+        var class_type = node.get("class_type", "")
+        if not params.has(title):
+            continue
+        match class_type:
+            "PrimitiveString":
+                node["inputs"]["value"] = params[title]
+            "PrimitiveInt":
+                node["inputs"]["value"] = int(params[title])
+            "PrimitiveFloat":
+                node["inputs"]["value"] = float(params[title])
+            "CheckpointLoaderSimple":
+                node["inputs"]["ckpt_name"] = params[title]
+            "LoadImage":
+                node["inputs"]["image"] = params[title]
+    return workflow
+
+# --- Seed Resolution ---
 
 func _resolve_seed(image_seed):
     if image_seed < 0:
@@ -376,146 +420,59 @@ func _resolve_seed(image_seed):
         return rng.randi() & 0x7FFFFFFF
     return image_seed
 
-func _checkpoint_node(model_name):
-    return {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": model_name}}
-
-func _clip_encode_node(text, clip_source = "4"):
-    return {"class_type": "CLIPTextEncode", "inputs": {"clip": [clip_source, 1], "text": text}}
-
-func _save_image_node(image_source, image_output = 0):
-    return {"class_type": "SaveImage", "inputs": {"filename_prefix": "PortraitGenerator", "images": [image_source, image_output]}}
-
-func _vae_decode_node(samples_source, vae_source = "4"):
-    return {"class_type": "VAEDecode", "inputs": {"samples": [samples_source, 0], "vae": [vae_source, 2]}}
+# --- Workflow Construction ---
 
 func _build_workflow(model_name, positive_prompt, negative_prompt, image_seed, width, height, steps = 20, cfg = 8.0):
     image_seed = _resolve_seed(image_seed)
-    return {
-        "3": {
-            "class_type": "KSampler",
-            "inputs": {
-                "cfg": cfg,
-                "denoise": 1.0,
-                "latent_image": ["5", 0],
-                "model": ["4", 0],
-                "negative": ["7", 0],
-                "positive": ["6", 0],
-                "sampler_name": "euler",
-                "scheduler": "normal",
-                "seed": image_seed,
-                "steps": steps
-            }
-        },
-        "4": _checkpoint_node(model_name),
-        "5": {
-            "class_type": "EmptyLatentImage",
-            "inputs": {"batch_size": 1, "height": height, "width": width}
-        },
-        "6": _clip_encode_node(positive_prompt),
-        "7": _clip_encode_node(negative_prompt),
-        "8": _vae_decode_node("3"),
-        "9": _save_image_node("8")
-    }
-
-# --- Image-to-Image ---
+    var template = _load_workflow("txt2img")
+    if template == null:
+        return null
+    var workflow = _populate_workflow(template, {
+        "positive_prompt": positive_prompt,
+        "negative_prompt": negative_prompt,
+        "steps": steps,
+        "width": width,
+        "height": height,
+        "cfg": cfg,
+        "checkpoint": model_name,
+        "seed": image_seed,
+    })
+    return workflow
 
 func _build_img2img_workflow(model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg):
     image_seed = _resolve_seed(image_seed)
-    return {
-        "3": {
-            "class_type": "KSampler",
-            "inputs": {
-                "cfg": cfg,
-                "denoise": denoise,
-                "latent_image": ["10", 0],
-                "model": ["4", 0],
-                "negative": ["7", 0],
-                "positive": ["6", 0],
-                "sampler_name": "euler",
-                "scheduler": "normal",
-                "seed": image_seed,
-                "steps": steps
-            }
-        },
-        "4": _checkpoint_node(model_name),
-        "5": {
-            "class_type": "LoadImage",
-            "inputs": {"image": source_filename}
-        },
-        "6": _clip_encode_node(positive_prompt),
-        "7": _clip_encode_node(negative_prompt),
-        "8": _vae_decode_node("3"),
-        "9": _save_image_node("8"),
-        "10": {
-            "class_type": "VAEEncode",
-            "inputs": {"pixels": ["5", 0], "vae": ["4", 2]}
-        }
-    }
-
-# --- Face Crop (portrait from body/nude) ---
+    var template = _load_workflow("img2img")
+    if template == null:
+        return null
+    var workflow = _populate_workflow(template, {
+        "positive_prompt": positive_prompt,
+        "negative_prompt": negative_prompt,
+        "steps": steps,
+        "cfg": cfg,
+        "denoise": denoise,
+        "checkpoint": model_name,
+        "source_image": source_filename,
+        "seed": image_seed,
+    })
+    return workflow
 
 func _build_face_crop_workflow(model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg):
     image_seed = _resolve_seed(image_seed)
-    return {
-        "1": {
-            "class_type": "LoadImage",
-            "inputs": {"image": source_filename}
-        },
-        "2": {
-            "class_type": "UltralyticsDetectorProvider",
-            "inputs": {"model_name": "bbox/face_yolov8m.pt"}
-        },
-        "4": _checkpoint_node(model_name),
-        "6": _clip_encode_node(positive_prompt),
-        "7": _clip_encode_node(negative_prompt),
-        "8": {
-            "class_type": "FaceDetailer",
-            "inputs": {
-                "image": ["1", 0],
-                "model": ["4", 0],
-                "clip": ["4", 1],
-                "vae": ["4", 2],
-                "positive": ["6", 0],
-                "negative": ["7", 0],
-                "bbox_detector": ["2", 0],
-                "guide_size": 64,
-                "guide_size_for": true,
-                "max_size": 256,
-                "seed": image_seed,
-                "steps": steps,
-                "cfg": cfg,
-                "sampler_name": "euler",
-                "scheduler": "normal",
-                "denoise": 0.1,
-                "feather": 0,
-                "noise_mask": true,
-                "force_inpaint": true,
-                "bbox_threshold": 0.5,
-                "bbox_dilation": 0,
-                "bbox_crop_factor": 1.5,
-                "sam_detection_hint": "center-1",
-                "sam_dilation": 0,
-                "sam_threshold": 0.93,
-                "sam_bbox_expansion": 0,
-                "sam_mask_hint_threshold": 0.7,
-                "sam_mask_hint_use_negative": "False",
-                "drop_size": 10,
-                "cycle": 1,
-                "wildcard": ""
-            }
-        },
-        "10": {
-            "class_type": "ImageScale",
-            "inputs": {
-                "image": ["8", 1],
-                "upscale_method": "lanczos",
-                "width": 256,
-                "height": 256,
-                "crop": "center"
-            }
-        },
-        "9": _save_image_node("10")
-    }
+    var template = _load_workflow("portrait")
+    if template == null:
+        return null
+    var workflow = _populate_workflow(template, {
+        "positive_prompt": positive_prompt,
+        "negative_prompt": negative_prompt,
+        "steps": steps,
+        "width": 256,
+        "height": 256,
+        "cfg": cfg,
+        "checkpoint": model_name,
+        "source_image": source_filename,
+        "seed": image_seed
+    })
+    return workflow
 
 # --- UUID Generation ---
 
