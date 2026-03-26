@@ -40,6 +40,7 @@ I don't have advice for system requirements. Instead, you should refer to the [C
 5. Click "Custom Nodes Manager".
 6. Search for and install these nodes:
    - `ComfyUI_FaceAnalysis`
+   - `rgthree-comfy`
 7. Close the node manager.
 8. Restart ComfyUI.
 
