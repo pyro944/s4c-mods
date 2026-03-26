@@ -148,16 +148,16 @@ func _on_models_response(result, response_code, _headers, body):
 
 # --- Image Generation ---
 
-func generate_image(model_name, positive_prompt, negative_prompt, image_seed = -1, width = 768, height = 1088, steps = 20, cfg = 8.0):
-    var workflow = _build_workflow(model_name, positive_prompt, negative_prompt, image_seed, width, height, steps, cfg)
+func generate_image(character_name, model_name, positive_prompt, negative_prompt, image_seed = -1, width = 768, height = 1088, steps = 20, cfg = 8.0):
+    var workflow = _build_workflow(character_name, model_name, positive_prompt, negative_prompt, image_seed, width, height, steps, cfg)
     _submit_workflow(workflow)
 
-func generate_img2img(model_name, positive_prompt, negative_prompt, source_filename, denoise = 0.7, image_seed = -1, steps = 20, cfg = 8.0):
-    var workflow = _build_img2img_workflow(model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg)
+func generate_img2img(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise = 0.7, image_seed = -1, steps = 20, cfg = 8.0):
+    var workflow = _build_img2img_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg)
     _submit_workflow(workflow)
 
-func generate_face_crop(model_name, positive_prompt, negative_prompt, source_filename, image_seed = -1, steps = 20, cfg = 8.0):
-    var workflow = _build_face_crop_workflow(model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg)
+func generate_face_crop(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed = -1, steps = 20, cfg = 8.0):
+    var workflow = _build_face_crop_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg)
     _submit_workflow(workflow)
 
 func _submit_workflow(workflow):
@@ -390,9 +390,9 @@ func _load_workflow(workflow_dir, workflow_name = "default"):
 
 func _populate_workflow(template, params):
     var workflow = template.duplicate(true)
-    for node_id in workflow:
+    for node_id in workflow.keys():
         var node = workflow[node_id]
-        if not node.has("_meta") or not node.has("widgets_values"):
+        if not node.has("_meta"):
             continue
         var title = node["_meta"].get("title", "")
         var class_type = node.get("class_type", "")
@@ -405,10 +405,17 @@ func _populate_workflow(template, params):
                 node["inputs"]["value"] = int(params[title])
             "PrimitiveFloat":
                 node["inputs"]["value"] = float(params[title])
-            "CheckpointLoaderSimple":
-                node["inputs"]["ckpt_name"] = params[title]
             "LoadImage":
                 node["inputs"]["image"] = params[title]
+    return workflow
+
+func _populate_static_nodes(workflow, image_prefix, checkpoint):
+    for node_id in workflow.keys():
+        var node = workflow[node_id]
+        if node.get("class_type", "") == "SaveImage":
+            node["inputs"]["filename_prefix"] = image_prefix
+        if node.get("class_type", "") == "CheckpointLoaderSimple":
+            node["inputs"]["ckpt_name"] = checkpoint
     return workflow
 
 # --- Seed Resolution ---
@@ -422,7 +429,7 @@ func _resolve_seed(image_seed):
 
 # --- Workflow Construction ---
 
-func _build_workflow(model_name, positive_prompt, negative_prompt, image_seed, width, height, steps = 20, cfg = 8.0):
+func _build_workflow(character_name, model_name, positive_prompt, negative_prompt, image_seed, width, height, steps = 20, cfg = 8.0):
     image_seed = _resolve_seed(image_seed)
     var template = _load_workflow("txt2img")
     if template == null:
@@ -434,12 +441,12 @@ func _build_workflow(model_name, positive_prompt, negative_prompt, image_seed, w
         "width": width,
         "height": height,
         "cfg": cfg,
-        "checkpoint": model_name,
         "seed": image_seed,
     })
+    workflow = _populate_static_nodes(workflow, character_name, model_name)
     return workflow
 
-func _build_img2img_workflow(model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg):
+func _build_img2img_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg):
     image_seed = _resolve_seed(image_seed)
     var template = _load_workflow("img2img")
     if template == null:
@@ -450,13 +457,13 @@ func _build_img2img_workflow(model_name, positive_prompt, negative_prompt, sourc
         "steps": steps,
         "cfg": cfg,
         "denoise": denoise,
-        "checkpoint": model_name,
         "source_image": source_filename,
         "seed": image_seed,
     })
+    workflow = _populate_static_nodes(workflow, character_name, model_name)
     return workflow
 
-func _build_face_crop_workflow(model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg):
+func _build_face_crop_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg):
     image_seed = _resolve_seed(image_seed)
     var template = _load_workflow("portrait")
     if template == null:
@@ -468,10 +475,10 @@ func _build_face_crop_workflow(model_name, positive_prompt, negative_prompt, sou
         "width": 256,
         "height": 256,
         "cfg": cfg,
-        "checkpoint": model_name,
         "source_image": source_filename,
         "seed": image_seed
     })
+    workflow = _populate_static_nodes(workflow, character_name, model_name)
     return workflow
 
 # --- UUID Generation ---

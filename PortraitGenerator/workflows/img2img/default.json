@@ -1,0 +1,179 @@
+{
+  "2": {
+    "inputs": {
+      "text": ["13", 0],
+      "clip": ["6", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": ["5", 0],
+      "clip": ["6", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "4": {
+    "inputs": {
+      "value": 20
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "steps"
+    }
+  },
+  "5": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "positive_prompt"
+    }
+  },
+  "6": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "true futa IL_epoch_10.safetensors",
+        "strength": 1
+      },
+      "➕ Add Lora": "",
+      "model": ["7", 0],
+      "clip": ["7", 1]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "ckpt_name": "perfectdeliberate_v70.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "8": {
+    "inputs": {
+      "seed": ["12", 0],
+      "steps": ["4", 0],
+      "cfg": ["14", 0],
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": ["16", 0],
+      "model": ["6", 0],
+      "positive": ["3", 0],
+      "negative": ["2", 0],
+      "latent_image": ["17", 0]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "PortraitGenerator",
+      "images": ["15", 0]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "10": {
+    "inputs": {
+      "value": 960
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "11": {
+    "inputs": {
+      "value": 640
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "12": {
+    "inputs": {
+      "value": 0
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "seed"
+    }
+  },
+  "13": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "negative_prompt"
+    }
+  },
+  "14": {
+    "inputs": {
+      "value": 7
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "cfg_scale"
+    }
+  },
+  "15": {
+    "inputs": {
+      "samples": ["8", 0],
+      "vae": ["7", 2]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "16": {
+    "inputs": {
+      "value": 0.9
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "denoise"
+    }
+  },
+  "17": {
+    "inputs": {
+      "pixels": ["18", 0],
+      "vae": ["7", 2]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode"
+    }
+  },
+  "18": {
+    "inputs": {
+      "image": ""
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "source_image"
+    }
+  }
+}

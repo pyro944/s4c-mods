@@ -1,0 +1,162 @@
+{
+  "14": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "positive_prompt"
+    }
+  },
+  "15": {
+    "inputs": {
+      "value": ""
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "negative_prompt"
+    }
+  },
+  "16": {
+    "inputs": {
+      "value": 20
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "steps"
+    }
+  },
+  "17": {
+    "inputs": {
+      "value": 7.5
+    },
+    "class_type": "PrimitiveFloat",
+    "_meta": {
+      "title": "cfg_scale"
+    }
+  },
+  "18": {
+    "inputs": {
+      "ckpt_name": "perfectdeliberate_v70.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "19": {
+    "inputs": {
+      "text": ["14", 0],
+      "clip": ["29", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "20": {
+    "inputs": {
+      "text": ["15", 0],
+      "clip": ["29", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negative Prompt)"
+    }
+  },
+  "21": {
+    "inputs": {
+      "samples": ["23", 0],
+      "vae": ["18", 2]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "22": {
+    "inputs": {
+      "filename_prefix": "PortraitGenerator",
+      "images": ["21", 0]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "23": {
+    "inputs": {
+      "seed": ["30", 0],
+      "steps": ["16", 0],
+      "cfg": ["17", 0],
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": ["29", 0],
+      "positive": ["19", 0],
+      "negative": ["20", 0],
+      "latent_image": ["25", 0]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "25": {
+    "inputs": {
+      "width": ["27", 0],
+      "height": ["28", 0],
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "27": {
+    "inputs": {
+      "value": 640
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "width"
+    }
+  },
+  "28": {
+    "inputs": {
+      "value": 960
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "height"
+    }
+  },
+  "29": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "true futa IL_epoch_10.safetensors",
+        "strength": 1
+      },
+      "➕ Add Lora": "",
+      "model": ["18", 0],
+      "clip": ["18", 1]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "30": {
+    "inputs": {
+      "value": -903292214335047
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "seed"
+    }
+  }
+}

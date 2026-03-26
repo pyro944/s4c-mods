@@ -1003,7 +1003,7 @@ func _do_txt2img(gen_type):
     var neg = config[1].text
     status_label.set_text("Status: Generating %s..." % config[3])
     _disable_all_gen_buttons()
-    comfyui_client.generate_image(model, pos, neg, -1, _get_gen_width(), _get_gen_height(), _get_gen_steps(), _get_gen_cfg())
+    comfyui_client.generate_image(active_person.get_full_name(), model, pos, neg, -1, _get_gen_width(), _get_gen_height(), _get_gen_steps(), _get_gen_cfg())
 
 func _on_gen_body():
     _do_txt2img(GenerationType.BODY)
@@ -1076,10 +1076,10 @@ func _on_upload_complete(uploaded_filename):
     if _current_generation_type == GenerationType.PORTRAIT_FROM_BODY or \
             _current_generation_type == GenerationType.PORTRAIT_FROM_NUDE:
         status_label.set_text("Status: Generating portrait (face crop)...")
-        comfyui_client.generate_face_crop(model, pos, neg, uploaded_filename, -1, _get_gen_steps(), _get_gen_cfg())
+        comfyui_client.generate_face_crop(active_person.get_full_name(), model, pos, neg, uploaded_filename, -1, _get_gen_steps(), _get_gen_cfg())
     else:
         status_label.set_text("Status: Generating (img2img)...")
-        comfyui_client.generate_img2img(model, pos, neg, uploaded_filename, _get_gen_denoise(), -1, _get_gen_steps(), _get_gen_cfg())
+        comfyui_client.generate_img2img(active_person.get_full_name(), model, pos, neg, uploaded_filename, _get_gen_denoise(), -1, _get_gen_steps(), _get_gen_cfg())
 
 func _on_upload_error(message):
     status_label.set_text("Upload error: " + str(message))

@@ -39,12 +39,9 @@ I don't have advice for system requirements. Instead, you should refer to the [C
    - In the top left of your screen, there's a C logo menu. In that menu, the "Extensions" menu item will also open the manager.
 5. Click "Custom Nodes Manager".
 6. Search for and install these nodes:
-   - `Comfy UI Impact Pack`
-   - `Comfy UI Impact Subpack`
+   - `ComfyUI_FaceAnalysis`
 7. Close the node manager.
-8. Click Model Manager.
-9. Search for and install the following models:
-   - `face_yolov8m (bbox)`
+8. Restart ComfyUI.
 
 Finally, you'll need at least one checkpoint model. When you first open ComfyUI, it will have some helpful suggestions to get you started.
 
