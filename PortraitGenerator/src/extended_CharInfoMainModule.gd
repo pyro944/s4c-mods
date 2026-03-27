@@ -393,6 +393,7 @@ func build_prompt_panel():
     model_dropdown.set_custom_minimum_size(Vector2(0, INPUT_HEIGHT))
     model_dropdown.add_item("(connect first)")
     model_dropdown.set_disabled(true)
+    model_dropdown.connect("item_selected", self , "_on_model_item_selected")
     right_col.add_child(model_dropdown)
 
     # --- Generation settings ---
@@ -862,7 +863,7 @@ func _get_selected_model():
     var idx = model_dropdown.get_selected()
     if idx < 0:
         return ""
-    return model_dropdown.get_item_text(idx)
+    return model_dropdown.get_item_metadata(idx)
 
 func _get_save_category():
     match _current_generation_type:
@@ -918,6 +919,11 @@ func _on_comfyui_connection_error(message):
     comfyui_connect_button.set_disabled(false)
     comfyui_url_input.set_editable(true)
 
+func _truncate(text, max_length):
+    if text.length() <= max_length:
+        return text
+    return text.substr(0, max_length - 3) + "..."
+
 func _on_models_loaded(model_list):
     model_dropdown.clear()
     if model_list.size() == 0:
@@ -926,8 +932,13 @@ func _on_models_loaded(model_list):
         return
     for model_name in model_list:
         model_dropdown.add_item(model_name)
+        model_dropdown.set_item_metadata(model_dropdown.get_item_count() - 1, model_name)
     model_dropdown.set_disabled(false)
     _update_button_states()
+
+func _on_model_item_selected(index):
+    var text = _truncate(model_dropdown.get_item_metadata(index), 35)
+    model_dropdown.set_text(text)
 
 func _on_images_ready(textures):
     _generated_textures = textures
@@ -1276,6 +1287,7 @@ func build_settings_popup():
     _lora_dropdown.set_custom_minimum_size(Vector2(0, 36))
     _lora_dropdown.add_item("(connect to ComfyUI)")
     _lora_dropdown.set_disabled(true)
+    _lora_dropdown.connect("item_selected", self , "_on_lora_item_selected")
     add_row.add_child(_lora_dropdown)
     _lora_weight_input = LineEdit.new()
     _lora_weight_input.set_text("1.0")
@@ -1306,6 +1318,11 @@ func _on_loras_loaded(lora_list):
     _lora_dropdown.set_disabled(false)
     for lora_name in lora_list:
         _lora_dropdown.add_item(lora_name)
+        _lora_dropdown.set_item_metadata(_lora_dropdown.get_item_count() - 1, lora_name)
+
+func _on_lora_item_selected(index):
+    var text = _truncate(_lora_dropdown.get_item_metadata(index), 40)
+    _lora_dropdown.set_text(text)
 
 func _refresh_workflow_dropdowns():
     if comfyui_client == null:
@@ -1318,6 +1335,7 @@ func _refresh_workflow_dropdowns():
         var select_idx = 0
         for i in range(names.size()):
             dd.add_item(names[i])
+            dd.set_item_metadata(i, names[i])
             if names[i] == selected_name:
                 select_idx = i
         if names.size() > 0:
@@ -1327,7 +1345,8 @@ func _on_workflow_selected(index, type_key):
     if lora_config == null:
         return
     var dd = _workflow_dropdowns[type_key]
-    var name = dd.get_item_text(index)
+    var name = dd.get_item_metadata(index)
+    dd.set_text(name)
     lora_config.set_workflow(type_key, name)
 
 # --- LoRA Tab Management ---
@@ -1350,10 +1369,14 @@ func _update_lora_subkey_dropdown():
         race_keys.sort()
         for r in race_keys:
             _lora_subkey_dropdown.add_item(r)
+            _lora_subkey_dropdown.set_item_metadata(_lora_subkey_dropdown.get_item_count() - 1, r)
     elif _current_lora_tab == "sex":
-        _lora_subkey_dropdown.add_item("male")
-        _lora_subkey_dropdown.add_item("female")
-        _lora_subkey_dropdown.add_item("futa")
+        _lora_subkey_dropdown.add_item("Male")
+        _lora_subkey_dropdown.set_item_metadata(0, "male")
+        _lora_subkey_dropdown.add_item("Female")
+        _lora_subkey_dropdown.set_item_metadata(1, "female")
+        _lora_subkey_dropdown.add_item("Futa")
+        _lora_subkey_dropdown.set_item_metadata(2, "futa")
 
 func _on_lora_subkey_changed(_index):
     _rebuild_lora_entries()
@@ -1364,7 +1387,7 @@ func _get_current_subkey():
     var idx = _lora_subkey_dropdown.get_selected()
     if idx < 0:
         return ""
-    return _lora_subkey_dropdown.get_item_text(idx)
+    return _lora_subkey_dropdown.get_item_metadata(idx)
 
 func _rebuild_lora_entries():
     # Clear existing entries
@@ -1399,7 +1422,7 @@ func _on_add_lora_pressed():
         return
     if _available_loras.size() == 0:
         return
-    var lora_name = _lora_dropdown.get_item_text(_lora_dropdown.get_selected())
+    var lora_name = _lora_dropdown.get_item_metadata(_lora_dropdown.get_selected())
     var weight = 1.0
     if _lora_weight_input.text.is_valid_float():
         weight = float(_lora_weight_input.text)
