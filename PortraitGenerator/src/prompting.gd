@@ -61,12 +61,12 @@ func build_prompts(character, positive_user_tags, clothing_user_tags, negative_u
     var nudity_tags = NUDE_TAGS.get(sex, [])
     var sex_negative_tags = SEX_NEGATIVE_TAGS.get(sex, [])
     var nudity_negative_tags = SEX_NUDITY_NEGATIVE_TAGS.get(sex, [])
-    var race_attributes = races.attributes.get(race, {})
-    var body_tags = race_attributes.get('body', [])
-    var race_negative_tags = race_attributes.get('negative', [])
-    var skin_type = race_attributes.get('skin', 'skin')
+    var race_descriptor = races.get_personal_descriptor(character, race)
+    var body_tags = races.get_body_tags(race)
+    var race_negative_tags = races.get_negative_tags(race)
+    var skin_type = races.get_skin_type(race)
 
-    var base_tags = subject_tags(sex) + \
+    var base_tags = subject_tags(sex, race_descriptor) + \
         age_tags(age, sex) + \
         body_tags + \
         skin_tags(skin_color, skin_type, skin_coverage) + \
@@ -119,13 +119,16 @@ func build_prompts(character, positive_user_tags, clothing_user_tags, negative_u
         'nude_negative': nude_negative_prompt
     }
 
-func subject_tags(sex):
+func subject_tags(sex, race_descriptor):
     sex = {
         'male': 'boy',
         'female': 'girl',
         'futa': 'futa'
     }.get(sex, sex)
-    return ['1%s' % sex]
+    var components = ['1%s' % sex]
+    if race_descriptor:
+        components.append(race_descriptor)
+    return components
 
 func age_tags(age, sex):
     sex = {
@@ -322,7 +325,6 @@ func build_equipment_prompt(character):
         seen_item_ids[item_id] = true
 
         var item = ResourceScripts.game_res.items[item_id]
-        print('Generating prompt for item %s in slot %s' % [JSON.print(item), slot])
         var desc = items.item_description(item)
 
         match slot:

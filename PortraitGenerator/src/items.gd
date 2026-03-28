@@ -1,13 +1,13 @@
 extends Node
 
-var attribute_overrides = {
+var _ATTRIBUTE_OVERRIDES = {
     # Daisy's lewd maid costume
     'daisy_dress_lewd': {
         'description': 'slutty maid costume, white crotchless panties, exposed genitals, exposed nipples, frills'
     }
 }
 
-var PART_LABELS = {
+var _PART_LABELS = {
     'WeaponHandle': 'handle',
     'ToolHandle': 'handle',
     'ToolBlade': 'blade',
@@ -21,8 +21,8 @@ var PART_LABELS = {
 }
 
 func item_description(item):
-    if item.code in attribute_overrides.keys() or item.itembase in attribute_overrides.keys():
-        return attribute_overrides.get(item.code, attribute_overrides.get(item.itembase, {})).get('description', '')
+    if item.code in _ATTRIBUTE_OVERRIDES.keys() or item.itembase in _ATTRIBUTE_OVERRIDES.keys():
+        return _ATTRIBUTE_OVERRIDES.get(item.code, _ATTRIBUTE_OVERRIDES.get(item.itembase, {})).get('description', '')
     return _generic_item_desc(item)
 
 func _generic_item_desc(item):
@@ -34,7 +34,7 @@ func _generic_item_desc(item):
     for part_key in item.parts:
         if part_key == primary_part:
             continue
-        if not PART_LABELS.has(part_key):
+        if not _PART_LABELS.has(part_key):
             continue
         var mat_code = item.parts[part_key]
         if not Items.materiallist.has(mat_code):
@@ -42,7 +42,7 @@ func _generic_item_desc(item):
         var mat = Items.materiallist[mat_code]
         if not mat.has('adjective') or mat.adjective == '':
             continue
-        suffixes.append('%s %s' % [mat.adjective.to_lower(), PART_LABELS[part_key]])
+        suffixes.append('%s %s' % [mat.adjective.to_lower(), _PART_LABELS[part_key]])
     if not suffixes.empty():
         desc += ' with ' + ' and '.join(suffixes)
     return desc
