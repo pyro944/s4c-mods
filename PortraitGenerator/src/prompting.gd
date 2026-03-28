@@ -1,5 +1,7 @@
 extends Node
 
+var races
+var items
 var _alpha_regex = null
 
 var CLOTHED_TAGS = ['fully clothed']
@@ -26,258 +28,9 @@ var SEX_NUDITY_NEGATIVE_TAGS = {
 }
 var FUTA_TESTICLES_NEGATIVE_OPTION = 'testicles, scrotum, ballsack'
 
-var RACES = {
-    'Arachna': {
-        'body': ['arachne', 'human spider hybrid', 'human torso attached to spider body'],
-        'skin': 'skin',
-        'negative': ['spider-man', 'spiderman', 'human legs', 'thighs']
-    },
-    'Avali': {
-        'body': ['harpy', 'wings for arms', 'bird legs', 'feather mane'],
-        'skin': 'skin',
-        'negative': ['human arms']
-    },
-    'BeastkinBird': {
-        'body': ['anthro', 'furry', 'bird', 'wings for arms', 'bird legs'],
-        'skin': 'feathers',
-        'negative': ['human arms']
-    },
-    'BeastkinBunny': {
-        'body': ['anthro', 'furry', 'rabbit'],
-        'skin': 'fur',
-        'negative': []
-    },
-    'BeastkinCat': {
-        'body': ['anthro', 'furry', 'cat'],
-        'skin': 'fur',
-        'negative': []
-    },
-    'BeastkinFox': {
-        'body': ['anthro', 'furry', 'fox'],
-        'skin': 'fur',
-        'negative': []
-    },
-    'BeastkinMouse': {
-        'body': ['anthro', 'furry', 'mouse', 'shortstack'],
-        'skin': 'fur',
-        'negative': ['tall', 'long legs']
-    },
-    'BeastkinOtter': {
-        'body': ['anthro', 'furry', 'otter'],
-        'skin': 'fur',
-        'negative': []
-    },
-    'BeastkinSheep': {
-        'body': ['anthro', 'furry', 'sheep'],
-        'skin': 'fur',
-        'negative': []
-    },
-    'BeastkinSquirrel': {
-        'body': ['anthro', 'furry', 'squirrel'],
-        'skin': 'fur',
-        'negative': []
-    },
-    'BeastkinTanuki': {
-        'body': ['anthro', 'furry', 'tanuki'],
-        'skin': 'fur',
-        'negative': []
-    },
-    'BeastkinWolf': {
-        'body': ['anthro', 'furry', 'wolf'],
-        'skin': 'fur',
-        'negative': []
-    },
-    'Centaur': {
-        'body': ['centaur', 'horse lower body'],
-        'skin': 'skin',
-        'negative': ['human legs', 'human thighs']
-    },
-    'DarkElf': {
-        'body': ['elf'],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Demon': {
-        'body': ['demon'],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Dragonkin': {
-        'body': ['dragon scales on arms', 'dragon scales on legs', 'dragon horns'],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Dryad': {
-        'body': [],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Dwarf': {
-        'body': ['dwarf', 'short', 'stout', 'small stature', 'shortstack'],
-        'skin': 'skin',
-        'negative': ['tall', 'long legs']
-    },
-    'Elf': {
-        'body': ['elf'],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Fairy': {
-        'body': ['fairy', 'petite'],
-        'skin': 'skin',
-        'negative': ['feet on ground', 'standing', 'drop shadow']
-    },
-    'Giant': {
-        'body': ['giant', 'humanoid', 'strong'],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Gnoll': {
-        'body': ['anthro', 'furry', 'hyena'],
-        'skin': 'fur',
-        'negative': []
-    },
-    'Gnome': {
-        'body': ['short', 'round nose', 'small stature', 'shortstack'],
-        'skin': 'skin',
-        'negative': ['tall', 'long legs']
-    },
-    'Goblin': {
-        'body': ['goblin', 'short', 'small stature', 'shortstack'],
-        'skin': 'skin',
-        'negative': ['tall', 'long legs']
-    },
-    'HalfkinBird': {
-        'body': [],
-        'skin': 'skin',
-        'negative': ['human ears']
-    },
-    'HalfkinBunny': {
-        'body': [],
-        'skin': 'skin',
-        'negative': ['headband', 'human ears']
-    },
-    'HalfkinCat': {
-        'body': [],
-        'skin': 'skin',
-        'negative': ['human ears']
-    },
-    'HalfkinFox': {
-        'body': [],
-        'skin': 'skin',
-        'negative': ['human ears']
-    },
-    'HalfkinMouse': {
-        'body': [],
-        'skin': 'skin',
-        'negative': ['human ears']
-    },
-    'HalfkinOtter': {
-        'body': [],
-        'skin': 'skin',
-        'negative': ['human ears']
-    },
-    'HalfkinSheep': {
-        'body': [],
-        'skin': 'skin',
-        'negative': ['human ears']
-    },
-    'HalfkinSquirrel': {
-        'body': [],
-        'skin': 'skin',
-        'negative': ['human ears']
-    },
-    'HalfkinTanuki': {
-        'body': [],
-        'skin': 'skin',
-        'negative': ['human ears']
-    },
-    'HalfkinWolf': {
-        'body': [],
-        'skin': 'skin',
-        'negative': ['human ears']
-    },
-    'Harpy': {
-        'body': ['harpy', 'wings for arms', 'bird legs'],
-        'skin': 'skin',
-        'negative': ['human arms']
-    },
-    'Human': {
-        'body': [],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Kobold': {
-        'body': ['anthro', 'lizard', 'kobold', 'short stature', 'shortstack'],
-        'skin': 'scales',
-        'negative': ['human skin', 'smooth skin', 'tall', 'long legs']
-    },
-    'Lamia': {
-        'body': ['snake person', 'lamia', 'scales covering legs', 'legs fused together'],
-        'skin': 'skin and scales',
-        'negative': ['skin on legs', 'smooth skin on legs', 'legs apart', 'human legs']
-    },
-    'Lizardfolk': {
-        'body': ['anthro', 'lizard'],
-        'skin': 'scales',
-        'negative': ['human skin', 'smooth skin']
-    },
-    'Minotaur': {
-        'body': ['minotaur', 'bull head', 'bull horns', 'human body'],
-        'skin': 'fur and skin',
-        'negative': []
-    },
-    'Nereid': {
-        'body': ['mermaid tail'],
-        'skin': 'skin and scales',
-        'negative': ['skin on legs', 'smooth skin on legs', 'legs apart', 'human legs']
-    },
-    'Ogre': {
-        'body': ['ogre'],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Orc': {
-        'body': ['orc', 'wide nose', 'wide mouth', 'tusks'],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Ratkin': {
-        'body': ['small stature', 'shortstack'],
-        'skin': 'skin',
-        'negative': ['tall', 'long legs']
-    },
-    'Satyr': {
-        'body': ['satyr', 'human upper body', 'goat lower body', 'goat legs', 'ram horns'],
-        'skin': 'skin and fur',
-        'negative': []
-    },
-    'Scylla': {
-        'body': ['squid person', 'scylla', 'human torso on octopus tentacles'],
-        'skin': 'skin and tentacles',
-        'negative': ['human legs', 'thighs']
-    },
-    'Seraph': {
-        'body': [],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Slime': {
-        'body': ['slime person', 'shiny skin', 'slimy skin'],
-        'skin': 'skin',
-        'negative': []
-    },
-    'Taurus': {
-        'body': [],
-        'skin': 'skin',
-        'negative': []
-    },
-    'TribalElf': {
-        'body': ['elf'],
-        'skin': 'skin',
-        'negative': []
-    },
-}
+func _ready():
+    races = modding_core.modules.PortraitGenerator_races
+    items = modding_core.modules.PortraitGenerator_items
 
 func build_prompts(character, positive_user_tags, clothing_user_tags, negative_user_tags):
     var sex = character.get_stat('sex')
@@ -308,7 +61,7 @@ func build_prompts(character, positive_user_tags, clothing_user_tags, negative_u
     var nudity_tags = NUDE_TAGS.get(sex, [])
     var sex_negative_tags = SEX_NEGATIVE_TAGS.get(sex, [])
     var nudity_negative_tags = SEX_NUDITY_NEGATIVE_TAGS.get(sex, [])
-    var race_attributes = RACES.get(race, {})
+    var race_attributes = races.attributes.get(race, {})
     var body_tags = race_attributes.get('body', [])
     var race_negative_tags = race_attributes.get('negative', [])
     var skin_type = race_attributes.get('skin', 'skin')
@@ -569,7 +322,8 @@ func build_equipment_prompt(character):
         seen_item_ids[item_id] = true
 
         var item = ResourceScripts.game_res.items[item_id]
-        var desc = _equipment_item_desc(item)
+        print('Generating prompt for item %s in slot %s' % [JSON.print(item), slot])
+        var desc = items.item_description(item)
 
         match slot:
             'head':
@@ -589,41 +343,5 @@ func build_equipment_prompt(character):
 
     return ', '.join(phrases)
 
-var PART_LABELS = {
-    'WeaponHandle': 'handle',
-    'ToolHandle': 'handle',
-    'ToolBlade': 'blade',
-    'ToolClothwork': 'cloth',
-    'ArmorTrim': 'trim',
-    'BowTrim': 'trim',
-    'ArmorEnc': 'accent',
-    'WeaponEnc': 'accent',
-    'ArmorCloth': 'cloth lining',
-    'JewelryGem': 'gem',
-}
-
-func _equipment_item_desc(item):
-    var desc = item.name.to_lower()
-    if item.parts.empty():
-        return desc
-    var primary_part = Items.itemlist[item.itembase].get('partmaterialname', '')
-    var suffixes = []
-    for part_key in item.parts:
-        if part_key == primary_part:
-            continue
-        if not PART_LABELS.has(part_key):
-            continue
-        var mat_code = item.parts[part_key]
-        if not Items.materiallist.has(mat_code):
-            continue
-        var mat = Items.materiallist[mat_code]
-        if not mat.has('adjective') or mat.adjective == '':
-            continue
-        suffixes.append('%s %s' % [mat.adjective.to_lower(), PART_LABELS[part_key]])
-    if not suffixes.empty():
-        desc += ' with ' + ' and '.join(suffixes)
-    return desc
-
-# Pulled out down here because `input_handler` isn't defined and it brings syntax checking to a halt
 func futa_have_balls():
     return input_handler.globalsettings.futa_balls
