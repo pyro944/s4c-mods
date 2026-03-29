@@ -29,6 +29,7 @@ signal images_ready(textures)
 signal upload_complete(filename)
 signal upload_error(message)
 signal error(message)
+signal progress_update(progress, max_progress)
 
 var state = State.DISCONNECTED
 var comfyui_url = "http://127.0.0.1:8000"
@@ -243,6 +244,9 @@ func _handle_ws_message(text):
             var prompt_id = str(data.get("prompt_id", ""))
             if (node == null or node == "") and prompt_id == current_prompt_id:
                 _fetch_history(current_prompt_id)
+        "progress":
+            var data = msg.get("data", {})
+            emit_signal("progress_update", data.get("value", 0), data.get("max", 0))
         "execution_error":
             if state == State.GENERATING:
                 state = State.CONNECTED

@@ -37,7 +37,7 @@
   },
   "18": {
     "inputs": {
-      "ckpt_name": "perfectdeliberate_v70.safetensors"
+      "ckpt_name": ""
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {

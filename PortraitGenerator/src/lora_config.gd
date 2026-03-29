@@ -13,6 +13,8 @@ const CATEGORY_STATS = {
 	"sex": "sex",
 }
 
+var GenerationType
+
 # { "global": [ {lora, strength}, ... ], "race": { "Human": [...], ... }, "sex": { "male": [...], ... } }
 var lora_config = {}
 
@@ -21,6 +23,9 @@ var workflow_selections = {"txt2img": "default", "img2img": "default", "portrait
 
 func _init():
 	lora_config = _default_lora_config()
+
+func _ready():
+	GenerationType = modding_core.modules.PortraitGenerator_util.GenerationType
 
 # The mod framework calls update on every registered module.
 func update():
@@ -75,7 +80,7 @@ func get_loras(category, key = ""):
 
 # --- Resolution ---
 
-func resolve_loras(person):
+func resolve_loras(person, gen_type):
 	var result = []
 	for category in CATEGORY_STATS.keys():
 		var stat_key = CATEGORY_STATS[category]
@@ -86,6 +91,10 @@ func resolve_loras(person):
 		else:
 			# Keyed category — include entries matching the character stat
 			var stat_value = person.get_stat(stat_key)
+			# Use nude if the portrait type is nude/nude preg
+			if category == 'sex':
+				if gen_type in [GenerationType.NUDE, GenerationType.NUDE_FROM_BODY, GenerationType.NUDE_PREGNANT, GenerationType.NUDE_PREGNANT_FROM_NUDE]:
+					stat_value += '_nude'
 			for entry in lora_config.get(category, {}).get(stat_value, []):
 				result.append(entry)
 	return result

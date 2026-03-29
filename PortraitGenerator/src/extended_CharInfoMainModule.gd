@@ -92,19 +92,11 @@ enum PromptOutput {
     NUDE_NEGATIVE = 3
 }
 
-enum GenerationType {
-    BODY,
-    NUDE,
-    NUDE_FROM_BODY,
-    PREGNANT,
-    PREGNANT_FROM_BODY,
-    NUDE_PREGNANT,
-    NUDE_PREGNANT_FROM_NUDE,
-    PORTRAIT_FROM_BODY,
-    PORTRAIT_FROM_NUDE
-}
+var GenerationType
 
 func _init():
+    GenerationType = modding_core.modules.PortraitGenerator_util.GenerationType
+
     # Add prompting button below Talk
     var prompting_button = build_prompting_button()
     add_child(prompting_button)
@@ -175,6 +167,7 @@ func _setup_comfyui_client():
     comfyui_client.connect("upload_error", self , "_on_upload_error")
     comfyui_client.connect("error", self , "_on_comfyui_error")
     comfyui_client.connect("loras_loaded", self , "_on_loras_loaded")
+    comfyui_client.connect("progress_update", self , "_on_comfyui_progress_update")
 
 func toggle_prompt_panel():
     if not prompt_popup.visible:
@@ -587,10 +580,13 @@ func _load_texture_from_path(path):
 # the TextEdit is reparented to the popup (last child = renders on top) and sized
 # to fit its content. When blurred it is returned to the placeholder.
 func _make_expanding_input(min_width, min_height):
-    var te_style = StyleBoxFlat.new()
-    te_style.set_bg_color(Color(0.95, 0.92, 0.85, 1))
-    te_style.set_border_color(Color(0.4, 0.35, 0.3, 1))
-    te_style.set_border_width_all(1)
+    var te_style_inactive = StyleBoxFlat.new()
+    te_style_inactive.set_bg_color(Color(0.85, 0.85, 0.85, 1))
+    te_style_inactive.set_border_color(Color(0.2, 0.15, 0.15, 1))
+    te_style_inactive.set_border_width_all(1)
+
+    var te_style_active = te_style_inactive.duplicate()
+    te_style_active.set_bg_color(Color(1, 1, 1, 1))
 
     var placeholder = Control.new()
     placeholder.set_custom_minimum_size(Vector2(min_width, min_height))
@@ -598,11 +594,12 @@ func _make_expanding_input(min_width, min_height):
 
     var te = TextEdit.new()
     te.set_theme(MAIN_THEME)
-    te.add_stylebox_override("normal", te_style)
-    te.add_stylebox_override("focus", te_style)
-    te.add_stylebox_override("read_only", te_style)
+    te.add_stylebox_override("normal", te_style_inactive)
+    te.add_stylebox_override("focus", te_style_active)
+    te.add_stylebox_override("read_only", te_style_inactive)
     te.add_color_override("font_color", Color(0.1, 0.05, 0.08, 1))
     te.add_color_override("selection_color", Color(0.5, 0.4, 0.2, 0.7))
+    te.add_color_override("cursor_color", Color(0, 0, 0))
     te.cursor_set_blink_enabled(true)
     te.set_wrap_enabled(false)
     te.set_anchors_and_margins_preset(Control.PRESET_WIDE)
@@ -658,6 +655,11 @@ func _apply_expanded_state(te):
     var ph_rect = ph.get_global_rect()
     te.rect_global_position = ph_rect.position
     te.rect_size = Vector2(ph_rect.size.x, _calc_exp_height(te, ph_rect.size.x))
+    # Adjust upward if expanding causes the bottom edge to go off-screen
+    var screen_rect = get_viewport().get_visible_rect()
+    var te_rect = te.get_global_rect()
+    if te_rect.position.y + te_rect.size.y > screen_rect.position.y + screen_rect.size.y:
+        te.rect_global_position = Vector2(te_rect.position.x, max(screen_rect.position.y, screen_rect.position.y + screen_rect.size.y - te_rect.size.y - 10))
 
 func _on_exp_focus_exited(te):
     te.set_wrap_enabled(false)
@@ -806,6 +808,7 @@ const SETTINGS_PATH = "user://portrait_generator_settings.json"
 func _save_ui_settings():
     var data = _read_settings_file()
     data["url"] = comfyui_url_input.text
+    data["model"] = _get_selected_model()
     data["steps"] = steps_input.text
     data["cfg"] = cfg_input.text
     data["denoise"] = denoise_input.text
@@ -841,6 +844,7 @@ func _load_ui_settings():
     if json.error != OK:
         return
     var data = json.result
+    # Don't try to select the model because the dropdown will be empty at this point
     if data.has("url"):
         comfyui_url_input.set_text(data["url"])
     if data.has("steps"):
@@ -934,6 +938,13 @@ func _on_models_loaded(model_list):
         model_dropdown.add_item(model_name)
         model_dropdown.set_item_metadata(model_dropdown.get_item_count() - 1, model_name)
     model_dropdown.set_disabled(false)
+    # Try to select the user's previously selected model if it's in the new list
+    var prev_model = _read_settings_file().get("model", "")
+    if prev_model != "":
+        for i in range(model_dropdown.get_item_count()):
+            if model_dropdown.get_item_metadata(i) == prev_model:
+                model_dropdown.select(i)
+                break
     _update_button_states()
 
 func _on_model_item_selected(index):
@@ -1020,6 +1031,9 @@ func _rebuild_preview_images(textures):
 
         preview_images_row.add_child(col)
 
+func _on_comfyui_progress_update(progress, max_progress):
+    status_label.set_text("Status: Generating... (step %d/%d)" % [progress, max_progress])
+
 func _on_comfyui_error(message):
     status_label.set_text("Error: " + str(message))
     _update_button_states()
@@ -1057,7 +1071,7 @@ func _do_txt2img(gen_type):
     status_label.set_text("Status: Generating %s..." % config[3])
     _disable_all_gen_buttons()
     var wf_name = lora_config.get_workflow_name("txt2img") if lora_config != null else "default"
-    var loras = lora_config.resolve_loras(active_person) if lora_config != null else []
+    var loras = lora_config.resolve_loras(active_person, gen_type) if lora_config != null else []
     comfyui_client.generate_image(active_person.get_full_name(), model, pos, neg, -1, _get_gen_width(), _get_gen_height(), _get_gen_steps(), _get_gen_cfg(), wf_name, loras)
 
 func _on_gen_body():
@@ -1129,7 +1143,7 @@ func _on_upload_complete(uploaded_filename):
             pos = nude_prompt_output.text
             neg = nude_negative_prompt_output.text
     var person = _generation_person if _generation_person != null else active_person
-    var loras = lora_config.resolve_loras(person) if lora_config != null and person != null else []
+    var loras = lora_config.resolve_loras(person, _current_generation_type) if lora_config != null and person != null else []
     if _current_generation_type == GenerationType.PORTRAIT_FROM_BODY or \
             _current_generation_type == GenerationType.PORTRAIT_FROM_NUDE:
         var wf_name = lora_config.get_workflow_name("portrait") if lora_config != null else "default"
@@ -1371,12 +1385,12 @@ func _update_lora_subkey_dropdown():
             _lora_subkey_dropdown.add_item(r)
             _lora_subkey_dropdown.set_item_metadata(_lora_subkey_dropdown.get_item_count() - 1, r)
     elif _current_lora_tab == "sex":
-        _lora_subkey_dropdown.add_item("Male")
-        _lora_subkey_dropdown.set_item_metadata(0, "male")
-        _lora_subkey_dropdown.add_item("Female")
-        _lora_subkey_dropdown.set_item_metadata(1, "female")
-        _lora_subkey_dropdown.add_item("Futa")
-        _lora_subkey_dropdown.set_item_metadata(2, "futa")
+        var items = ["male", "female", "futa"]
+        for item in items:
+            _lora_subkey_dropdown.add_item(item.capitalize())
+            _lora_subkey_dropdown.set_item_metadata(_lora_subkey_dropdown.get_item_count() - 1, item)
+            _lora_subkey_dropdown.add_item(item.capitalize() + " (nude)")
+            _lora_subkey_dropdown.set_item_metadata(_lora_subkey_dropdown.get_item_count() - 1, item + "_nude")
 
 func _on_lora_subkey_changed(_index):
     _rebuild_lora_entries()
