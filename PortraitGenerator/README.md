@@ -94,6 +94,10 @@ Feel free to edit the prompts as you see fit. The game will not overwrite them u
 
 You can import your own workflows if you're comfortable working with ComfyUI. The mod expects a few specific nodes to be present:
 
+All workflows:
+
+- At least one `SaveImage` node to output your generated image.
+
 For txt2img workflows:
 
 - A `StringPrimitive` node titled `positive_prompt`.
@@ -136,6 +140,7 @@ LoRA settings are in the "Workflow settings..." panel.
 
 - The current release is pretty rough around the edges. You will find bugs. Please report them here.
 - If you close the image preview without saving, the mod _will not_ remember that image. If you want to get it back, go find it in the ComfyUI app, which should still have it saved.
+- If your workflow generates multiple images, the UI will display them, but you'll only be able to save them to one portrait type.
 
 ## Troubleshooting
 
