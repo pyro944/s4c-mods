@@ -3,7 +3,7 @@ extends Node
 var _ATTRIBUTE_OVERRIDES = {
     # Daisy's lewd maid costume
     'daisy_dress_lewd': {
-        'description': 'slutty maid costume, white crotchless panties, exposed genitals, exposed nipples, frills'
+        'description': 'black lace crotchless panties, (black and white slutty maid cosplay:1.3), frills, open front skirt, exposed shoulders, (exposed genitals, exposed breasts, exposed midriff:1.5),  breast support, (black sheer stockings and long gloves), NSFW'
     }
 }
 

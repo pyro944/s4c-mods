@@ -147,7 +147,7 @@ func skin_tags(skin_color, skin_type, skin_coverage):
     return ['%s %s' % [to_simple_color(skin), skin_type]]
 
 func skin_coverage_to_color(skin_color, skin_coverage):
-    var coverage_components = skin_coverage.split("_")
+    var coverage_components = Array(skin_coverage.split("_"))
     if coverage_components.size() == 2:
         return coverage_components[1]
     elif coverage_components.size() > 2:

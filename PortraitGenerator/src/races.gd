@@ -2,192 +2,214 @@ extends Node
 
 var _ATTRIBUTES = {
     'Arachna': {
-        'body': ['arachne', 'human spider hybrid', 'human torso attached to spider body'],
+        'body': ['arachne', 'human spider hybrid', 'human torso attached to spider body', 'fused at the waist'],
         'skin': 'skin',
         'negative': ['spider-man', 'spiderman', 'human legs', 'thighs'],
-        'personal_descriptor': 'spider $PERSON',
+        'personal_descriptor': '(spider $PERSON:1.5)',
     },
     'Avali': {
         'body': ['harpy', 'wings for arms', 'bird legs', 'feather mane'],
         'skin': 'skin',
         'negative': ['human arms'],
-        'personal_descriptor': 'bird $PERSON',
+        'personal_descriptor': '(half bird $PERSON:1.5)',
     },
     'BeastkinBird': {
-        'body': ['anthro', 'furry', 'bird', 'wings for arms', 'bird legs'],
+        'body': ['furry', 'bird head', 'wings for arms', 'bird legs'],
         'skin': 'feathers',
-        'negative': ['human arms']
+        'negative': ['human arms'],
+        'personal_descriptor': '(anthro bird $PERSON:1.5)',
     },
     'BeastkinBunny': {
-        'body': ['anthro', 'furry', 'rabbit'],
+        'body': ['furry'],
         'skin': 'fur',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(anthro rabbit $PERSON:1.5)',
     },
     'BeastkinCat': {
-        'body': ['anthro', 'furry', 'cat'],
+        'body': ['furry'],
         'skin': 'fur',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(anthro cat $PERSON:1.5)',
     },
     'BeastkinFox': {
-        'body': ['anthro', 'furry', 'fox'],
+        'body': ['furry'],
         'skin': 'fur',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(anthro fox $PERSON:1.5)',
     },
     'BeastkinMouse': {
-        'body': ['anthro', 'furry', 'mouse', 'shortstack'],
+        'body': ['furry', 'shortstack'],
         'skin': 'fur',
-        'negative': ['tall', 'long legs']
+        'negative': ['tall', 'long legs'],
+        'personal_descriptor': '(anthro mouse $PERSON:1.5)',
     },
     'BeastkinOtter': {
-        'body': ['anthro', 'furry', 'otter'],
+        'body': ['furry'],
         'skin': 'fur',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(anthro otter $PERSON:1.5)',
     },
     'BeastkinSheep': {
-        'body': ['anthro', 'furry', 'sheep'],
+        'body': ['furry'],
         'skin': 'fur',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(anthro sheep $PERSON:1.5)',
     },
     'BeastkinSquirrel': {
-        'body': ['anthro', 'furry', 'squirrel'],
+        'body': ['furry'],
         'skin': 'fur',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(anthro squirrel $PERSON:1.5)',
     },
     'BeastkinTanuki': {
-        'body': ['anthro', 'furry', 'tanuki'],
+        'body': ['furry'],
         'skin': 'fur',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(anthro raccoon $PERSON:1.5)',
     },
     'BeastkinWolf': {
-        'body': ['anthro', 'furry', 'wolf'],
+        'body': ['furry'],
         'skin': 'fur',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(anthro wolf $PERSON:1.5)',
     },
     'Centaur': {
-        'body': ['centaur', 'horse lower body'],
+        'body': ['horse lower body'],
         'skin': 'skin',
-        'negative': ['human legs', 'human thighs']
+        'negative': ['human legs', 'human thighs'],
+        'personal_descriptor': '(centaur $PERSON:1.5)',
     },
     'DarkElf': {
-        'body': ['elf'],
+        'body': [],
         'skin': 'skin',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(dark elf $PERSON:1.5)',
     },
     'Demon': {
-        'body': ['demon'],
+        'body': [],
         'skin': 'skin',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(demon $PERSON:1.5)',
     },
     'Dragonkin': {
         'body': ['dragon scales on arms', 'dragon scales on legs', 'dragon horns'],
         'skin': 'skin',
         'negative': [],
-        'personal_descriptor': 'dragon $PERSON',
+        'personal_descriptor': '(half dragon $PERSON:1.5)',
     },
     'Dryad': {
         'body': [],
         'skin': 'skin',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(plant $PERSON:1.5)',
     },
     'Dwarf': {
-        'body': ['dwarf', 'short', 'stout', 'small stature', 'shortstack'],
+        'body': ['short', 'stout', 'small stature', 'shortstack'],
         'skin': 'skin',
-        'negative': ['tall', 'long legs']
+        'negative': ['tall', 'long legs'],
+        'personal_descriptor': '(dwarf $PERSON:1.5)',
     },
     'Elf': {
-        'body': ['elf'],
+        'body': [],
         'skin': 'skin',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(elf $PERSON:1.5)',
     },
     'Fairy': {
-        'body': ['fairy', 'petite'],
+        'body': ['petite'],
         'skin': 'skin',
-        'negative': ['feet on ground', 'standing', 'drop shadow']
+        'negative': ['feet on ground', 'standing', 'drop shadow'],
+        'personal_descriptor': '(fairy $PERSON:1.5)',
     },
     'Giant': {
-        'body': ['giant', 'humanoid', 'strong'],
+        'body': ['humanoid', 'strong'],
         'skin': 'skin',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(giant $PERSON:1.5)',
     },
     'Gnoll': {
-        'body': ['anthro', 'furry', 'hyena'],
+        'body': ['furry'],
         'skin': 'fur',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(anthro hyena $PERSON:1.5)',
     },
     'Gnome': {
         'body': ['short', 'round nose', 'small stature', 'shortstack'],
         'skin': 'skin',
-        'negative': ['tall', 'long legs']
+        'negative': ['tall', 'long legs'],
+        'personal_descriptor': '(gnome $PERSON:1.5)',
     },
     'Goblin': {
-        'body': ['goblin', 'short', 'small stature', 'shortstack'],
+        'body': ['short', 'small stature', 'shortstack'],
         'skin': 'skin',
-        'negative': ['tall', 'long legs']
+        'negative': ['tall', 'long legs'],
+        'personal_descriptor': '(goblin $PERSON:1.5)',
     },
     'HalfkinBird': {
         'body': [],
         'skin': 'skin',
         'negative': ['human ears'],
-        'personal_descriptor': 'bird $PERSON',
+        'personal_descriptor': '(half bird $PERSON:1.5)',
     },
     'HalfkinBunny': {
         'body': [],
         'skin': 'skin',
         'negative': ['headband', 'human ears'],
-        'personal_descriptor': 'bunny $PERSON',
+        'personal_descriptor': '(half rabbit  $PERSON:1.5)',
     },
     'HalfkinCat': {
         'body': [],
         'skin': 'skin',
         'negative': ['cat ears'],
-        'personal_descriptor': 'cat $PERSON',
+        'personal_descriptor': '(half cat $PERSON:1.5)',
     },
     'HalfkinFox': {
         'body': [],
         'skin': 'skin',
         'negative': ['human ears'],
-        'personal_descriptor': 'fox $PERSON',
+        'personal_descriptor': '(half fox $PERSON:1.5)',
     },
     'HalfkinMouse': {
         'body': [],
         'skin': 'skin',
         'negative': ['human ears'],
-        'personal_descriptor': 'mouse $PERSON',
+        'personal_descriptor': '(half mouse $PERSON:1.5)',
     },
     'HalfkinOtter': {
         'body': [],
         'skin': 'skin',
         'negative': ['human ears'],
-        'personal_descriptor': 'otter $PERSON',
+        'personal_descriptor': '(half otter $PERSON:1.5)',
     },
     'HalfkinSheep': {
         'body': [],
         'skin': 'skin',
         'negative': ['human ears'],
-        'personal_descriptor': 'sheep $PERSON',
+        'personal_descriptor': '(half sheep $PERSON:1.5)',
     },
     'HalfkinSquirrel': {
         'body': [],
         'skin': 'skin',
         'negative': ['human ears'],
-        'personal_descriptor': 'squirrel $PERSON',
+        'personal_descriptor': '(half squirrel $PERSON:1.5)',
     },
     'HalfkinTanuki': {
         'body': [],
         'skin': 'skin',
         'negative': ['human ears'],
-        'personal_descriptor': 'tanuki $PERSON',
+        'personal_descriptor': '(half tanuki $PERSON:1.5)',
     },
     'HalfkinWolf': {
         'body': [],
         'skin': 'skin',
         'negative': ['human ears'],
-        'personal_descriptor': 'wolf $PERSON',
+        'personal_descriptor': '(half wolf $PERSON:1.5)',
     },
     'Harpy': {
-        'body': ['harpy', 'wings for arms', 'bird legs'],
+        'body': ['wings for arms', 'bird legs'],
         'skin': 'skin',
-        'negative': ['human arms']
+        'negative': ['human arms'],
+        'personal_descriptor': '(harpy $PERSON:1.5)',
     },
     'Human': {
         'body': [],
@@ -195,57 +217,64 @@ var _ATTRIBUTES = {
         'negative': []
     },
     'Kobold': {
-        'body': ['anthro', 'lizard', 'kobold', 'short stature', 'shortstack'],
+        'body': ['anthro', 'short stature', 'shortstack'],
         'skin': 'scales',
-        'negative': ['human skin', 'smooth skin', 'tall', 'long legs']
+        'negative': ['human skin', 'smooth skin', 'tall', 'long legs'],
+        'personal_descriptor': '(kobold $PERSON:1.5)',
     },
     'Lamia': {
-        'body': ['lamia', 'scales covering legs', 'legs fused together'],
+        'body': ['scales covering legs', 'legs fused together'],
         'skin': 'skin and scales',
         'negative': ['skin on legs', 'smooth skin on legs', 'legs apart', 'human legs'],
-        'personal_descriptor': 'snake $PERSON',
+        'personal_descriptor': '(lamia $PERSON:1.5)',
     },
     'Lizardfolk': {
-        'body': ['anthro', 'lizard'],
+        'body': ['anthro'],
         'skin': 'scales',
-        'negative': ['human skin', 'smooth skin']
+        'negative': ['human skin', 'smooth skin'],
+        'personal_descriptor': '(lizard $PERSON:1.5)',
     },
     'Minotaur': {
-        'body': ['minotaur', 'bull head', 'bull horns', 'human body'],
+        'body': ['bull head', 'bull horns', 'human body'],
         'skin': 'fur and skin',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(minotaur $PERSON:1.5)',
     },
     'Nereid': {
         'body': ['mermaid tail'],
         'skin': 'skin and scales',
-        'negative': ['skin on legs', 'smooth skin on legs', 'legs apart', 'human legs']
+        'negative': ['skin on legs', 'smooth skin on legs', 'legs apart', 'human legs'],
+        'personal_descriptor': '(nereid $PERSON:1.5)',
     },
     'Ogre': {
-        'body': ['ogre'],
+        'body': [],
         'skin': 'skin',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(oni $PERSON:1.5)',
     },
     'Orc': {
-        'body': ['orc', 'wide nose', 'wide mouth', 'tusks'],
+        'body': ['tusks'],
         'skin': 'skin',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(orc $PERSON:1.5)',
     },
     'Ratkin': {
         'body': ['small stature', 'shortstack'],
         'skin': 'skin',
         'negative': ['tall', 'long legs'],
-        'personal_descriptor': 'rat $PERSON',
+        'personal_descriptor': '(half rat $PERSON:1.5)',
     },
     'Satyr': {
-        'body': ['satyr', 'human upper body', 'goat lower body', 'goat legs', 'ram horns'],
+        'body': ['human upper body', 'goat lower body', 'goat legs', 'ram horns'],
         'skin': 'skin and fur',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(satyr $PERSON:1.5)',
     },
     'Scylla': {
-        'body': ['scylla', 'human torso on octopus tentacles'],
+        'body': ['human torso on octopus tentacles'],
         'skin': 'skin and tentacles',
         'negative': ['human legs', 'thighs'],
-        'personal_descriptor': 'squid $PERSON',
+        'personal_descriptor': '(scylla $PERSON:1.5)',
     },
     'Seraph': {
         'body': [],
@@ -253,21 +282,22 @@ var _ATTRIBUTES = {
         'negative': []
     },
     'Slime': {
-        'body': ['shiny skin', 'slimy skin'],
+        'body': ['translucent skin', 'slimy skin'],
         'skin': 'skin',
         'negative': [],
-        'personal_descriptor': 'slime $PERSON',
+        'personal_descriptor': '(slime $PERSON:1.5)',
     },
     'Taurus': {
         'body': [],
         'skin': 'skin',
         'negative': [],
-        'personal_descriptor': 'cow $PERSON',
+        'personal_descriptor': '(half cow $PERSON:1.5)',
     },
     'TribalElf': {
-        'body': ['elf'],
+        'body': [],
         'skin': 'skin',
-        'negative': []
+        'negative': [],
+        'personal_descriptor': '(elf $PERSON:1.5)',
     },
 }
 
