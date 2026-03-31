@@ -75,7 +75,10 @@ var settings_popup = null
 var lora_config = null
 var _available_loras = []
 var _workflow_dropdowns = {}
-var _lora_dropdown = null
+var _lora_search = null
+var _lora_popup = null
+var _lora_list = null
+var _selected_lora_name = ""
 var _lora_weight_input = null
 var _lora_entries_container = null
 var _lora_subkey_dropdown = null
@@ -1295,14 +1298,30 @@ func build_settings_popup():
     # Add LoRA row
     var add_row = HBoxContainer.new()
     add_row.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    _lora_dropdown = OptionButton.new()
-    _lora_dropdown.set_theme(OPTIONS_THEME)
-    _lora_dropdown.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    _lora_dropdown.set_custom_minimum_size(Vector2(0, 36))
-    _lora_dropdown.add_item("(connect to ComfyUI)")
-    _lora_dropdown.set_disabled(true)
-    _lora_dropdown.connect("item_selected", self , "_on_lora_item_selected")
-    add_row.add_child(_lora_dropdown)
+    _lora_search = LineEdit.new()
+    _lora_search.set_placeholder("(connect to ComfyUI)")
+    _lora_search.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    _lora_search.set_custom_minimum_size(Vector2(0, 36))
+    _lora_search.cursor_set_blink_enabled(true)
+    _lora_search.set_editable(false)
+    _lora_search.connect("text_changed", self , "_on_lora_search_changed")
+    _lora_search.connect("focus_entered", self , "_on_lora_search_focused")
+    _lora_search.connect("focus_exited", self , "_on_lora_search_unfocused")
+    add_row.add_child(_lora_search)
+    _lora_popup = Popup.new()
+    var lora_panel = PanelContainer.new()
+    lora_panel.add_stylebox_override("panel", _make_panel_bg())
+    lora_panel.set_anchors_and_margins_preset(Control.PRESET_WIDE)
+    _lora_list = ItemList.new()
+    _lora_list.set_focus_mode(Control.FOCUS_NONE)
+    _lora_list.set_custom_minimum_size(Vector2(0, 200))
+    _lora_list.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    _lora_list.set_v_size_flags(Control.SIZE_EXPAND_FILL)
+    _lora_list.set_auto_height(false)
+    _lora_list.connect("item_selected", self , "_on_lora_list_item_selected")
+    lora_panel.add_child(_lora_list)
+    _lora_popup.add_child(lora_panel)
+    popup.add_child(_lora_popup)
     _lora_weight_input = LineEdit.new()
     _lora_weight_input.set_text("1.0")
     _lora_weight_input.set_custom_minimum_size(Vector2(60, 36))
@@ -1324,19 +1343,75 @@ func _sort_by_lowercase(a, b):
 func _on_loras_loaded(lora_list):
     _available_loras = lora_list
     _available_loras.sort_custom(self , "_sort_by_lowercase")
-    _lora_dropdown.clear()
+    _selected_lora_name = ""
     if lora_list.size() == 0:
-        _lora_dropdown.add_item("(no LoRAs found)")
-        _lora_dropdown.set_disabled(true)
+        _lora_search.set_placeholder("(no LoRAs found)")
+        _lora_search.set_editable(false)
         return
-    _lora_dropdown.set_disabled(false)
-    for lora_name in lora_list:
-        _lora_dropdown.add_item(lora_name)
-        _lora_dropdown.set_item_metadata(_lora_dropdown.get_item_count() - 1, lora_name)
+    _lora_search.set_editable(true)
+    _lora_search.set_placeholder("Search " + str(lora_list.size()) + " LoRAs...")
+    _lora_search.set_text("")
 
-func _on_lora_item_selected(index):
-    var text = _truncate(_lora_dropdown.get_item_metadata(index), 40)
-    _lora_dropdown.set_text(text)
+func _on_lora_search_changed(new_text):
+    _filter_lora_popup(new_text)
+
+func _on_lora_search_focused():
+    _lora_search.select_all()
+    _filter_lora_popup(_lora_search.text)
+
+func _on_lora_search_unfocused():
+    if not _lora_popup.visible:
+        if _selected_lora_name != "":
+            _lora_search.set_text(_truncate(_selected_lora_name, 40))
+        else:
+            _lora_search.set_text("")
+
+func _filter_lora_popup(filter_text):
+    _lora_list.clear()
+    var query = filter_text.to_lower()
+    var count = 0
+    var max_visible = 50
+    for i in range(_available_loras.size()):
+        var lora_name = _available_loras[i]
+        if query == "" or lora_name.to_lower().find(query) != -1:
+            if count < max_visible:
+                _lora_list.add_item(lora_name)
+                _lora_list.set_item_metadata(count, i)
+            count += 1
+    if count == 0:
+        _lora_list.add_item("(no matches)")
+        _lora_list.set_item_disabled(0, true)
+        _lora_list.set_item_selectable(0, false)
+    elif count > max_visible:
+        var hint_idx = _lora_list.get_item_count()
+        _lora_list.add_item("(" + str(count - max_visible) + " more \u2014 type to narrow...)")
+        _lora_list.set_item_disabled(hint_idx, true)
+        _lora_list.set_item_selectable(hint_idx, false)
+    _show_lora_popup()
+
+func _show_lora_popup():
+    if _lora_list.get_item_count() == 0:
+        return
+    var rect = _lora_search.get_global_rect()
+    var popup_size = Vector2(rect.size.x, min(_lora_list.get_item_count() * 28, 200))
+    _lora_popup.popup(Rect2(Vector2(rect.position.x, rect.position.y + rect.size.y), popup_size))
+
+func _on_lora_list_item_selected(index):
+    var lora_idx = _lora_list.get_item_metadata(index)
+    if lora_idx == null:
+        return
+    _selected_lora_name = _available_loras[lora_idx]
+    # Defer so the current click event finishes processing before the
+    # popup disappears -- hiding synchronously lets the viewport
+    # re-route the same click to controls behind the popup.
+    call_deferred("_close_lora_popup")
+
+func _close_lora_popup():
+    _lora_popup.hide()
+    if _selected_lora_name != "":
+        _lora_search.set_text(_truncate(_selected_lora_name, 40))
+    else:
+        _lora_search.set_text("")
 
 func _refresh_workflow_dropdowns():
     if comfyui_client == null:
@@ -1432,11 +1507,11 @@ func _rebuild_lora_entries():
         _lora_entries_container.add_child(row)
 
 func _on_add_lora_pressed():
-    if lora_config == null or _lora_dropdown.get_selected() < 0:
+    if lora_config == null or _selected_lora_name == "":
         return
     if _available_loras.size() == 0:
         return
-    var lora_name = _lora_dropdown.get_item_metadata(_lora_dropdown.get_selected())
+    var lora_name = _selected_lora_name
     var weight = 1.0
     if _lora_weight_input.text.is_valid_float():
         weight = float(_lora_weight_input.text)
