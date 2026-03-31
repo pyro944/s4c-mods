@@ -36,3 +36,13 @@
 - Add support for custom workflows.
 - Add settings persistence.
 - Refine the UI.
+
+1.1.1
+- Fix failure when parsing a character's fur color.
+- Update race and item prompts.
+
+1.1.2
+- Fix failure when saving a character with a nickname.
+- Add filtering for LoRA selection.
+- Add more item descriptions
+- Update documentation
