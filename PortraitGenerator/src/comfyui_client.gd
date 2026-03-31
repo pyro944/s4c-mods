@@ -336,6 +336,12 @@ func _on_image_response(result, response_code, _headers, body):
 
 # --- Image Saving ---
 
+func _sanitize_file_name(name):
+    var invalid_chars = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']
+    for character in invalid_chars:
+        name = name.replace(character, '_')
+    return name
+
 # Saves the image to the appropriate directory for the given category.
 # Returns the saved path on success, or "" on failure.
 func save_image(image_texture, character_id, character_name, category):
@@ -344,7 +350,7 @@ func save_image(image_texture, character_id, character_name, category):
     var dir = Directory.new()
     if not dir.dir_exists(save_dir):
         dir.make_dir_recursive(save_dir)
-    var path = save_dir + "/%s_%s.png" % [character_name, str(character_id)]
+    var path = save_dir + "/%s_%s.png" % [_sanitize_file_name(character_name), str(character_id)]
     var err = image.save_png(path)
     if err != OK:
         emit_signal("error", "Failed to save image (error %d)" % err)
