@@ -125,14 +125,21 @@ They reference each other through `modding_core.modules.<name>`:
 | `PortraitGenerator_lora_config` | `src/lora_config.gd`    | LoRA and workflow settings         |
 | `PortraitGenerator_races`       | `src/races.gd`          | Race body/skin/negative tag data   |
 | `PortraitGenerator_items`       | `src/items.gd`          | Equipment descriptions             |
-| `PortraitGenerator_util`        | `src/util.gd`           | Shared `GenerationType` enum       |
+| `PortraitGenerator_util`        | `src/util.gd`           | Shared enum, settings file IO      |
 
 ### Why util.gd exists
 
-`util.gd` contains only the `GenerationType` enum. Both `extended_CharInfoMainModule.gd`
-and `lora_config.gd` need to reference this enum, but they can't import each other
-without creating a circular dependency. Putting the enum in a third module breaks the
-cycle. This may not be _strictly_ necessary, but seems safest.
+`util.gd` serves two purposes:
+
+1. **Shared `GenerationType` enum** — Both `extended_CharInfoMainModule.gd` and
+   `lora_config.gd` need to reference this enum, but they can't import each other
+   without creating a circular dependency. Putting the enum in a third module breaks the
+   cycle.
+
+2. **Settings file persistence** — The `read_settings()` and `save_settings(data)`
+   functions provide a single source of truth for reading and writing the shared
+   `user://portrait_generator_settings.json` file. This centralizes the file IO logic
+   and ensures both modules use the same path and error handling.
 
 ---
 
@@ -506,8 +513,23 @@ Both `extended_CharInfoMainModule.gd` and `lora_config.gd` persist to the same f
 user://portrait_generator_settings.json
 ```
 
-Each module reads the existing file before writing to preserve the other's data. The
-file contains:
+**File IO is centralized in `util.gd`:**
+- `read_settings()` — Reads and parses the settings file, returns an empty dict on error
+- `save_settings(data)` — Writes the data dict to the settings file
+
+Both modules call these shared functions:
+
+- **`lora_config.gd`** calls `util.read_settings()` in `load_settings()` and
+  `util.save_settings()` in `save_settings()`. It merges its LoRA and workflow data
+  before writing.
+- **`extended_CharInfoMainModule.gd`** calls `util.read_settings()` in
+  `_load_ui_settings()` and `util.save_settings()` in `_save_ui_settings()`. It
+  preserves the LoRA config when writing.
+
+This pattern ensures both modules read the full file, modify their own keys, and write
+back the complete data, so neither module clobbers the other's settings.
+
+The file contains:
 
 ```json
 {
@@ -609,12 +631,16 @@ viewing. Since image generation is asynchronous (takes seconds to minutes), the 
 could navigate to a different character before the result comes back. Capturing the
 reference at dispatch time ensures the save handler writes to the correct character.
 
-### 6. Shared settings file
+### 6. Shared settings file with centralized IO
 
-**Why not separate files?** Both `lora_config.gd` and the main UI share settings
-because they're logically a single configuration surface. Both modules read-then-merge
-before writing to avoid clobbering each other's data. This is a pragmatic choice over
-introducing a central settings manager, keeping the module count low.
+**Why share a file?** Both `lora_config.gd` and the main UI persist to the same JSON
+file because they're logically a single configuration surface. This is a pragmatic choice
+over introducing a central settings manager, keeping the module count low.
+
+**How it works:** Instead of each module duplicating file IO logic, both call shared
+functions in `util.gd` (`read_settings()` and `save_settings(data)`). Each module reads
+the full file, modifies its keys, and writes back the complete data. This eliminates
+duplication and ensures they use consistent error handling and file paths.
 
 ### 7. All UI built in code (no .tscn files)
 

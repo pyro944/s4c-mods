@@ -73,6 +73,7 @@ var _generation_person = null
 # Settings popup
 var settings_popup = null
 var lora_config = null
+var util = null
 var _available_loras = []
 var _workflow_dropdowns = {}
 var _lora_search = null
@@ -151,6 +152,7 @@ func _add_close_button_to_popup(popup):
 func _setup_comfyui_client():
     comfyui_client = modding_core.modules.PortraitGenerator_comfyui
     lora_config = modding_core.modules.PortraitGenerator_lora_config
+    util = modding_core.modules.PortraitGenerator_util
     if lora_config != null:
         lora_config.load_settings()
     if comfyui_client == null:
@@ -806,10 +808,8 @@ func _get_gen_width():
 func _get_gen_height():
     return int(height_input.text) if height_input.text.is_valid_integer() else DEFAULT_HEIGHT
 
-const SETTINGS_PATH = "user://portrait_generator_settings.json"
-
 func _save_ui_settings():
-    var data = _read_settings_file()
+    var data = util.read_settings() if util != null else {}
     data["url"] = comfyui_url_input.text
     data["model"] = _get_selected_model()
     data["steps"] = steps_input.text
@@ -819,34 +819,14 @@ func _save_ui_settings():
     data["height"] = height_input.text
     data["positive_prompt"] = positive_input.text
     data["negative_prompt"] = negative_input.text
-    var file = File.new()
-    if file.open(SETTINGS_PATH, File.WRITE) == OK:
-        file.store_string(JSON.print(data))
-        file.close()
+    if util != null:
+        util.save_settings(data)
 
-func _read_settings_file():
-    var file = File.new()
-    if not file.file_exists(SETTINGS_PATH):
-        return {}
-    if file.open(SETTINGS_PATH, File.READ) != OK:
-        return {}
-    var json = JSON.parse(file.get_as_text())
-    file.close()
-    if json.error != OK:
-        return {}
-    return json.result if json.result is Dictionary else {}
 
 func _load_ui_settings():
-    var file = File.new()
-    if not file.file_exists(SETTINGS_PATH):
+    if util == null:
         return
-    if file.open(SETTINGS_PATH, File.READ) != OK:
-        return
-    var json = JSON.parse(file.get_as_text())
-    file.close()
-    if json.error != OK:
-        return
-    var data = json.result
+    var data = util.read_settings()
     # Don't try to select the model because the dropdown will be empty at this point
     if data.has("url"):
         comfyui_url_input.set_text(data["url"])
@@ -942,7 +922,7 @@ func _on_models_loaded(model_list):
         model_dropdown.set_item_metadata(model_dropdown.get_item_count() - 1, model_name)
     model_dropdown.set_disabled(false)
     # Try to select the user's previously selected model if it's in the new list
-    var prev_model = _read_settings_file().get("model", "")
+    var prev_model = (util.read_settings() if util != null else {}).get("model", "")
     if prev_model != "":
         for i in range(model_dropdown.get_item_count()):
             if model_dropdown.get_item_metadata(i) == prev_model:
