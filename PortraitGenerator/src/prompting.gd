@@ -165,21 +165,27 @@ func hair_tags(hair_color, hair_length, hair_style, beard, facial_hair_color):
     hair_color = {
         'yellow': 'blonde'
     }.get(hair_color, hair_color)
+    var hair_prompt = ''
     if hair_length == 'bald':
-        return [hair_length]
-    var hair_length_prompt = {
-        'ear': 'very short hair',
-        'neck': 'short hair',
-        'shoulder': 'medium hair',
-        'waist': 'long hair',
-        'hips': 'extremely long hair'
-    }.get(hair_length)
-    var components = [
-        '%s hair' % hair_color,
-        hair_length_prompt,
-        '%s hair' % hair_style
-    ]
-
+        hair_prompt = 'bald'
+    else:
+        var hair_length_prompt = {
+            'ear': 'very short',
+            'neck': 'short',
+            'shoulder': 'medium',
+            'waist': 'long',
+            'hips': 'extremely long'
+        }.get(hair_length)
+        match hair_style:
+            'straight':
+                hair_prompt = '%s %s hair' % [hair_length_prompt, hair_color]
+            'pigtails', 'twinbraids':
+                hair_prompt = '%s %s hair in %s' % [hair_length_prompt, hair_color, hair_style]
+            'ponytail', 'bun', 'braid':
+                hair_prompt = '%s %s hair in a %s' % [hair_length_prompt, hair_color, hair_style]
+            _:
+                hair_prompt = '%s %s %s hair' % [hair_length_prompt, hair_color, hair_style]
+    var components = [hair_prompt]
     if beard != 'no':
         components += facial_hair_tags(beard, to_simple_color(facial_hair_color))
 
