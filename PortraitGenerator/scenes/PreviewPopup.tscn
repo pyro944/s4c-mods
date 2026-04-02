@@ -1,0 +1,41 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://assets/MainTheme.tres" type="Theme" id=1]
+
+[node name="PreviewPopup" type="Popup"]
+theme = ExtResource( 1 )
+anchor_left = 0.0
+anchor_top = 0.5
+anchor_right = 0.0
+anchor_bottom = 0.5
+margin_left = 20.0
+margin_top = -240.0
+margin_right = 420.0
+margin_bottom = 240.0
+
+[node name="Panel" type="Panel" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+custom_constants/margin_left = 10
+custom_constants/margin_right = 10
+custom_constants/margin_top = 10
+custom_constants/margin_bottom = 10
+
+[node name="Outer" type="VBoxContainer" parent="Panel/Margin"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TitleLabel" type="Label" parent="Panel/Margin/Outer"]
+text = "Generated Image"
+align = 1
+
+[node name="ImagesRow" type="HBoxContainer" parent="Panel/Margin/Outer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TryAgainBtn" type="Button" parent="Panel/Margin/Outer"]
+text = "Try Again"

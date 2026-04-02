@@ -40,15 +40,30 @@ PortraitGenerator/
 ├── module.gd                                # Bootstrapper — hooks into the game's scene tree
 ├── version.txt
 ├── docs/
-├── resources/images/                        # Button textures for the UI
+├── resources/
+│   ├── images/                              # Button textures for the UI
+│   └── styles/
+│       ├── panel_bg.tres                    # Shared dark panel StyleBoxFlat
+│       ├── column_separator.tres            # Column divider StyleBoxFlat
+│       ├── text_edit_inactive.tres          # ExpandingInput: unfocused style
+│       └── text_edit_active.tres            # ExpandingInput: focused style
+├── scenes/
+│   ├── PromptPanel.tscn                     # Main prompt popup layout (two-column)
+│   ├── PreviewPopup.tscn                    # Preview popup shell
+│   ├── SettingsPopup.tscn                   # Settings popup layout
+│   ├── PromptOutput.tscn                    # Reusable: label + TextEdit + copy button
+│   ├── ExpandingInput.tscn                  # Reusable: placeholder Control + TextEdit
+│   ├── ExpandingInput.gd                    # Helper script: focus/reparent/expand logic
+│   ├── FilterableDropdown.tscn              # Reusable: Popup + PanelContainer + ItemList
+│   └── FilterableDropdown.gd                # Helper script: search/filter/select logic
 ├── src/
-│   ├── extended_CharInfoMainModule.gd       # Main UI (1500+ lines) — extends the game's character info panel
+│   ├── extended_CharInfoMainModule.gd       # Main UI — extends the game's character info panel
 │   ├── comfyui_client.gd                    # WebSocket + HTTP client for ComfyUI
 │   ├── prompting.gd                         # Translates character stats → Stable Diffusion tags
 │   ├── races.gd                             # Per-race prompt descriptors (~40 races)
 │   ├── items.gd                             # Item/equipment → text descriptions
 │   ├── lora_config.gd                       # LoRA selection and workflow config, with persistence
-│   └── util.gd                              # Shared GenerationType enum
+│   └── util.gd                              # Shared GenerationType enum, settings file IO
 └── workflows/
     ├── txt2img/default.json                 # ComfyUI API-format workflow for text-to-image
     ├── img2img/default.json                 # ComfyUI API-format workflow for image-to-image
@@ -127,6 +142,10 @@ They reference each other through `modding_core.modules.<name>`:
 | `PortraitGenerator_items`       | `src/items.gd`          | Equipment descriptions             |
 | `PortraitGenerator_util`        | `src/util.gd`           | Shared enum, settings file IO      |
 
+Note: `ExpandingInput.gd` and `FilterableDropdown.gd` in `scenes/` are **not** modules
+registered in `mod_config.ini`. They are helper scripts loaded and attached at runtime by
+`extended_CharInfoMainModule.gd`.
+
 ### Why util.gd exists
 
 `util.gd` serves two purposes:
@@ -147,19 +166,80 @@ They reference each other through `modding_core.modules.<name>`:
 
 ## The Main UI — extended_CharInfoMainModule.gd
 
-This is the largest file. It builds the entire mod UI programmatically
-in GDScript; there are no `.tscn` scene files for the mod's panels.
+This is the largest file. It loads `.tscn` scene files for the mod's popup windows,
+inserts sub-scene instances at placeholder nodes, applies mod-local `.tres` styles, and
+wires all signals in code.
+
+### Architecture: Scenes + Code
+
+The UI uses a hybrid approach:
+
+- **Static layout** lives in `.tscn` scene files (`scenes/PromptPanel.tscn`,
+  `PreviewPopup.tscn`, `SettingsPopup.tscn`).
+- **Mod-local styles** are `.tres` resource files loaded and applied in code after
+  instancing, since `.tscn` files can only reference game resources via `res://` paths.
+- **Custom controls** (`ExpandingInput`, `FilterableDropdown`) are separate `.tscn` +
+  `.gd` pairs. Their scripts can't be attached via the `.tscn` (which can't reference
+  `user://` paths), so the main script loads the `.gd` and calls `set_script()` +
+  `setup()` after instancing.
+- **Sub-scene insertion** uses placeholder `Control` nodes in the parent `.tscn`. Code
+  replaces each placeholder with an instanced sub-scene at the same position in the
+  tree.
+
+```gdscript
+# Pattern: load + instance + script attach + setup
+var input = _ExpandingInputScene.instance()
+input.set_script(_ExpandingInputScript)
+input.setup(MOD_PATH, Vector2(550, 50))
+input.popup_root = prompt_popup
+
+# Pattern: replace placeholder with instanced sub-scene
+var placeholder = parent.get_node("SomePlaceholder")
+_replace_placeholder(placeholder, input)
+```
 
 ### Initialization
 
 In `_init()`:
 
-1. Loads the `GenerationType` enum from `util.gd`.
+1. Loads shared `.tres` styles (`panel_bg`, `column_separator`) and scene/script
+   resources (`ExpandingInput`, `FilterableDropdown`, `PromptOutput`).
 2. Creates a `TextureButton` (the "AI" button) positioned at the bottom of the
    character portrait area.
-3. Builds three popup windows: the prompt panel, the preview popup, and the settings
-   popup.
+3. Calls `_setup_prompt_panel()`, `_setup_preview_popup()`, and
+   `_setup_settings_popup()` — each loads its `.tscn`, applies styles, inserts
+   sub-scenes, grabs node references, and wires signals.
 4. Defers `_setup_comfyui_client()` and `_add_close_buttons()` to the next frame.
+
+### Custom Controls
+
+**ExpandingInput** (`scenes/ExpandingInput.tscn` + `ExpandingInput.gd`):
+
+A TextEdit wrapped in a placeholder Control. On focus, the TextEdit reparents to
+`popup_root` (the owning Popup) so it renders above all sibling controls — a Godot 3.5
+z-ordering workaround. On unfocus, it returns to its placeholder. Newlines are stripped
+so it behaves like a single-line input with word-wrap on focus.
+
+API:
+- `setup(mod_path, min_size)` — loads styles, connects internal signals
+- `popup_root` — must be set by the parent before focus can expand
+- `text` (setget) — read/write the TextEdit content
+- `return_to_placeholder()` — force-return to placeholder (called on popup hide)
+- `sync_position()` — update position when scroll moves while expanded
+- Signal: `text_changed`
+
+**FilterableDropdown** (`scenes/FilterableDropdown.tscn` + `FilterableDropdown.gd`):
+
+A searchable dropdown popup backed by an ItemList. Shows up to 50 matches with a
+"type to narrow..." hint for larger result sets. Uses deferred close to prevent
+click-through.
+
+API:
+- `setup(mod_path)` — loads panel style, connects internal signals
+- `set_items(items)` — set the full list of searchable items
+- `filter(query, anchor_control)` — filter and optionally show below a control
+- `selected_item` — the last selected item name
+- Signal: `item_selected(item_name)`
 
 ### Prompt Panel (main panel)
 
@@ -591,17 +671,19 @@ actual update logic runs through signals and `_process()`.
 
 ### 3. Expanding TextEdit workaround
 
-**Location:** `extended_CharInfoMainModule.gd`
+**Location:** `scenes/ExpandingInput.gd`
 
-TextEdit fields in the prompt panel are reparented to the popup root when focused and
-returned to their original placeholder when unfocused. This is a workaround for Godot
-3.5's UI layering: child controls can't render above sibling containers without being
-higher in the scene tree. By temporarily reparenting a focused TextEdit to the popup
-root, it renders on top of all other panel content.
+The `ExpandingInput` helper class encapsulates a TextEdit that reparents to `popup_root`
+(the owning Popup) on focus and returns to its placeholder Control on unfocus. This is a
+workaround for Godot 3.5's UI layering: child controls can't render above sibling
+containers without being higher in the scene tree.
 
-The TextEdit is also configured to suppress newlines (Enter key), making it behave like
-a single-line `LineEdit` while still supporting word-wrap for long prompts. Height is
-dynamically calculated based on text content width.
+The TextEdit also suppresses newlines (Enter key), making it behave like a single-line
+`LineEdit` while supporting word-wrap for long prompts. Height is dynamically calculated
+based on text content width.
+
+The main script tracks all ExpandingInput instances in `_expanding_inputs` and calls
+`return_to_placeholder()` on each when the popup hides, ensuring clean state on reopen.
 
 ### 4. Deferred initialization
 
@@ -642,15 +724,22 @@ functions in `util.gd` (`read_settings()` and `save_settings(data)`). Each modul
 the full file, modifies its keys, and writes back the complete data. This eliminates
 duplication and ensures they use consistent error handling and file paths.
 
-### 7. All UI built in code (no .tscn files)
+### 7. Hand-written .tscn scene files
 
-The mod builds every panel, button, label, and layout container programmatically in
-GDScript. This is intentional — the game's mod framework supports script extension via
-`modding_core.extend_node()`, but doesn't have good facilities for loading custom
-`.tscn` scene files. Building UI in code also avoids path-resolution issues across
-different mod installation paths.
+The mod's popup windows and reusable controls are defined in hand-written `.tscn` text
+files in `scenes/`. These files can only reference game resources via `res://` paths
+(themes, textures). Mod-local resources (`.tres` styles, helper `.gd` scripts) are loaded
+in code and applied after the scene is instanced.
 
-We could probably build `.tscn` files in the future.
+This constraint exists because the game loads mods from `user://mods/`, and `.tscn`
+`ext_resource` entries with `user://` paths would break on different systems. The
+workaround:
+
+- `.tscn` files use `Control` placeholder nodes where custom sub-scenes go
+- Code instances sub-scenes (`ExpandingInput`, `PromptOutput`, `FilterableDropdown`)
+  and replaces placeholders using `_replace_placeholder()`
+- Code loads `.gd` scripts and attaches them with `set_script()` + `setup()`
+- Code loads `.tres` styles and applies them with `add_stylebox_override()`
 
 ### 8. Inline LoRA tags in item descriptions
 
@@ -662,12 +751,12 @@ rather than through the workflow's LoRA loader node. This will only work if the
 user has a ComfyUI node configured to read these inline directives. Otherwise,
 they shouldn't do much of anything.
 
-### 9. LoRA popup deferred close
+### 9. FilterableDropdown deferred close
 
-**Location:** `extended_CharInfoMainModule.gd:_close_lora_popup()`
+**Location:** `scenes/FilterableDropdown.gd:_deferred_close()`
 
-The LoRA search popup's hide is deferred with `call_deferred()` so the click event
-finishes processing before the popup disappears. Without this, the click can "fall
+The `FilterableDropdown` helper class hides the popup with `call_deferred()` so the click
+event finishes processing before the popup disappears. Without this, the click can "fall
 through" to controls behind the popup.
 
 ---

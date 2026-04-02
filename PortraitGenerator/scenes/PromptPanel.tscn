@@ -1,0 +1,237 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://assets/MainTheme.tres" type="Theme" id=1]
+[ext_resource path="res://assets/Themes_v2/UNIVERSAL/DropDown.tres" type="Theme" id=2]
+
+[node name="PromptPanel" type="Popup"]
+theme = ExtResource( 1 )
+anchor_left = 0.0
+anchor_top = 0.5
+anchor_right = 0.0
+anchor_bottom = 0.5
+margin_left = 20.0
+margin_top = -375.0
+margin_right = 1220.0
+margin_bottom = 375.0
+
+[node name="Panel" type="Panel" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+custom_constants/margin_left = 10
+custom_constants/margin_right = 10
+custom_constants/margin_top = 10
+custom_constants/margin_bottom = 10
+
+[node name="Outer" type="VBoxContainer" parent="Panel/Margin"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Panel/Margin/Outer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Columns" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll"]
+size_flags_horizontal = 3
+
+[node name="LeftColumn" type="VBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns"]
+rect_min_size = Vector2( 450, 0 )
+
+[node name="PositiveLabel" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+text = "Positive prompt"
+
+[node name="PositiveInputPlaceholder" type="Control" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+rect_min_size = Vector2( 550, 50 )
+
+[node name="ClothingLabel" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+text = "Clothing description"
+
+[node name="ClothingRow" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+
+[node name="ClothingInputPlaceholder" type="Control" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn/ClothingRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 50 )
+
+[node name="FromEquipmentBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn/ClothingRow"]
+rect_min_size = Vector2( 0, 50 )
+text = "From equipment"
+
+[node name="NegativeLabel" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+text = "Negative prompt"
+
+[node name="NegativeInputPlaceholder" type="Control" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+rect_min_size = Vector2( 550, 50 )
+
+[node name="GeneratePromptsBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+text = "Generate Prompts"
+
+[node name="ClothedOutputPlaceholder" type="Control" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+
+[node name="ClothedNegOutputPlaceholder" type="Control" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+
+[node name="NudeOutputPlaceholder" type="Control" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+
+[node name="NudeNegOutputPlaceholder" type="Control" parent="Panel/Margin/Outer/Scroll/Columns/LeftColumn"]
+
+[node name="ColumnSeparator" type="Panel" parent="Panel/Margin/Outer/Scroll/Columns"]
+rect_min_size = Vector2( 10, 0 )
+
+[node name="RightColumn" type="VBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns"]
+rect_min_size = Vector2( 500, 0 )
+
+[node name="ComfyuiLabel" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+text = "ComfyUI Server"
+
+[node name="UrlRow" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+
+[node name="UrlInput" type="LineEdit" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/UrlRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 50 )
+caret_blink = true
+text = "http://127.0.0.1:8000"
+placeholder_text = "http://host:port"
+
+[node name="ConnectBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/UrlRow"]
+rect_min_size = Vector2( 90, 50 )
+text = "Connect"
+
+[node name="StatusLabel" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+text = "Status: Disconnected"
+
+[node name="ModelLabel" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+text = "Model:"
+
+[node name="ModelDropdown" type="OptionButton" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+theme = ExtResource( 2 )
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 50 )
+disabled = true
+
+[node name="SettingsRow1" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+
+[node name="StepsCol" type="VBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow1"]
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow1/StepsCol"]
+text = "Steps:"
+
+[node name="StepsInput" type="LineEdit" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow1/StepsCol"]
+rect_min_size = Vector2( 0, 35 )
+caret_blink = true
+text = "20"
+
+[node name="CfgCol" type="VBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow1"]
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow1/CfgCol"]
+text = "CFG:"
+
+[node name="CfgInput" type="LineEdit" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow1/CfgCol"]
+rect_min_size = Vector2( 0, 35 )
+caret_blink = true
+text = "7.5"
+
+[node name="DenoiseCol" type="VBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow1"]
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow1/DenoiseCol"]
+text = "Denoise:"
+
+[node name="DenoiseInput" type="LineEdit" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow1/DenoiseCol"]
+rect_min_size = Vector2( 0, 35 )
+caret_blink = true
+text = "0.90"
+
+[node name="SettingsRow2" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+
+[node name="WidthCol" type="VBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow2"]
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow2/WidthCol"]
+text = "Width:"
+
+[node name="WidthInput" type="LineEdit" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow2/WidthCol"]
+rect_min_size = Vector2( 0, 35 )
+caret_blink = true
+text = "768"
+
+[node name="HeightCol" type="VBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow2"]
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow2/HeightCol"]
+text = "Height:"
+
+[node name="HeightInput" type="LineEdit" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/SettingsRow2/HeightCol"]
+rect_min_size = Vector2( 0, 35 )
+caret_blink = true
+text = "1088"
+
+[node name="SettingsBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+text = "Workflow settings..."
+
+[node name="GenBodyBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "New body"
+
+[node name="NudeRow" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+
+[node name="GenNudeBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/NudeRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "New nude"
+
+[node name="NudeFromBodyBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/NudeRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "Nude from body"
+
+[node name="PregRow" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+
+[node name="GenPregBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/PregRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "New pregnant"
+
+[node name="PregFromBodyBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/PregRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "Pregnant from body"
+
+[node name="NudePregRow" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+
+[node name="GenNudePregBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/NudePregRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "New nude pregnant"
+
+[node name="NudePregFromNudeBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/NudePregRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "Nude preg. from nude"
+
+[node name="PortraitRow" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+
+[node name="PortraitFromBodyBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/PortraitRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "Portrait from body"
+
+[node name="PortraitFromNudeBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/PortraitRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "Portrait from nude"

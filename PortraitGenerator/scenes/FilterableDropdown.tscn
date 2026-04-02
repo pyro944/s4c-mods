@@ -1,0 +1,17 @@
+[gd_scene format=2]
+
+[node name="FilterableDropdown" type="Popup"]
+
+[node name="PanelContainer" type="PanelContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="ItemList" type="ItemList" parent="PanelContainer"]
+margin_left = 7.0
+margin_top = 7.0
+margin_right = -7.0
+margin_bottom = -7.0
+focus_mode = 0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+auto_height = false

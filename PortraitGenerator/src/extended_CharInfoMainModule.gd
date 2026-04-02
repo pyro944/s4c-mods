@@ -17,21 +17,14 @@ var prompt_popup = null
 var positive_input = null
 var clothing_input = null
 var negative_input = null
-var _positive_placeholder = null
-var _clothing_placeholder = null
-var _negative_placeholder = null
 var _prompt_scroll = null
 var clothed_prompt_output = null
 var clothed_negative_prompt_output = null
 var nude_prompt_output = null
 var nude_negative_prompt_output = null
-var _clothed_prompt_placeholder = null
-var _clothed_negative_prompt_placeholder = null
-var _nude_prompt_placeholder = null
-var _nude_negative_prompt_placeholder = null
 var _output_user_modified = {"clothed": false, "clothed_negative": false, "nude": false, "nude_negative": false}
 var _updating_prompts = false
-# Expanding-input [text_edit, placeholder] pairs — single source of truth for reparenting logic
+# All ExpandingInput instances — used for return_to_placeholder on popup hide
 var _expanding_inputs = []
 
 # ComfyUI integration
@@ -78,8 +71,6 @@ var _available_loras = []
 var _workflow_dropdowns = {}
 var _lora_search = null
 var _lora_popup = null
-var _lora_list = null
-var _selected_lora_name = ""
 var _lora_weight_input = null
 var _lora_entries_container = null
 var _lora_subkey_dropdown = null
@@ -98,56 +89,279 @@ enum PromptOutput {
 
 var GenerationType
 
+# Scene and script resources — loaded once in _init()
+var _ExpandingInputScene = null
+var _ExpandingInputScript = null
+var _PromptOutputScene = null
+var _FilterableDropdownScene = null
+var _FilterableDropdownScript = null
+var _PANEL_BG = null
+var _SEPARATOR_BG = null
+
 func _init():
     GenerationType = modding_core.modules.PortraitGenerator_util.GenerationType
 
-    # Add prompting button below Talk
-    var prompting_button = build_prompting_button()
-    add_child(prompting_button)
-    prompting_button.connect('pressed', self , 'toggle_prompt_panel')
+    # Load shared resources
+    _PANEL_BG = load(MOD_PATH + "/resources/styles/panel_bg.tres")
+    _SEPARATOR_BG = load(MOD_PATH + "/resources/styles/column_separator.tres")
+    _ExpandingInputScene = load(MOD_PATH + "/scenes/ExpandingInput.tscn")
+    _ExpandingInputScript = load(MOD_PATH + "/scenes/ExpandingInput.gd")
+    _PromptOutputScene = load(MOD_PATH + "/scenes/PromptOutput.tscn")
+    _FilterableDropdownScene = load(MOD_PATH + "/scenes/FilterableDropdown.tscn")
+    _FilterableDropdownScript = load(MOD_PATH + "/scenes/FilterableDropdown.gd")
 
-    # Construct prompting panel
-    prompt_popup = build_prompt_panel()
+    # Customize input field colors on our cloned theme
+    MAIN_THEME.set_color('clear_button_color', 'LineEdit', Color(0, 0, 0, 1))
+    MAIN_THEME.set_color('cursor_color', 'LineEdit', Color(0, 0, 0, 0.9))
+    MAIN_THEME.set_color('font_color_uneditable', 'LineEdit', Color(0, 0, 0, 0.8))
+
+    # Add prompting button below Talk
+    var prompting_button = _build_prompting_button()
+    add_child(prompting_button)
+    prompting_button.connect('pressed', self, 'toggle_prompt_panel')
+
+    # Construct popups from scenes
+    prompt_popup = _setup_prompt_panel()
     add_child(prompt_popup)
 
-    # Construct preview popup
-    preview_popup = build_preview_popup()
+    preview_popup = _setup_preview_popup()
     add_child(preview_popup)
 
-    # Construct settings popup
-    settings_popup = build_settings_popup()
+    settings_popup = _setup_settings_popup()
     add_child(settings_popup)
 
     call_deferred("_setup_comfyui_client")
-    # Add close buttons after the popups are in the scene tree so
-    # get_global_rect() returns the correct screen coordinates.
     call_deferred("_add_close_buttons")
+
+# --- Scene Setup Methods ---
+
+func _instance_expanding_input(popup_root, min_size = Vector2(550, 50)):
+    var input = _ExpandingInputScene.instance()
+    input.set_script(_ExpandingInputScript)
+    input.setup(MOD_PATH, min_size)
+    input.popup_root = popup_root
+    _expanding_inputs.append(input)
+    return input
+
+func _instance_prompt_output(popup_root, output_type, description):
+    var output_node = _PromptOutputScene.instance()
+    output_node.get_node("DescriptionLabel").set_text(description)
+
+    var input = _instance_expanding_input(popup_root, Vector2(INPUT_WIDTH, INPUT_HEIGHT))
+    input.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    var placeholder = output_node.get_node("OutputRow/InputPlaceholder")
+    _replace_placeholder(placeholder, input)
+
+    var copy_button = output_node.get_node("OutputRow/CopyButton")
+
+    match output_type:
+        PromptOutput.CLOTHED:
+            clothed_prompt_output = input
+            copy_button.connect('pressed', self, '_copy_prompt_type_pressed', [PromptOutput.CLOTHED])
+        PromptOutput.CLOTHED_NEGATIVE:
+            clothed_negative_prompt_output = input
+            copy_button.connect('pressed', self, '_copy_prompt_type_pressed', [PromptOutput.CLOTHED_NEGATIVE])
+        PromptOutput.NUDE:
+            nude_prompt_output = input
+            copy_button.connect('pressed', self, '_copy_prompt_type_pressed', [PromptOutput.NUDE])
+        PromptOutput.NUDE_NEGATIVE:
+            nude_negative_prompt_output = input
+            copy_button.connect('pressed', self, '_copy_prompt_type_pressed', [PromptOutput.NUDE_NEGATIVE])
+
+    input.connect("text_changed", self, "_on_output_text_changed", [output_type])
+    return output_node
+
+func _replace_placeholder(placeholder, replacement):
+    var parent = placeholder.get_parent()
+    var idx = placeholder.get_index()
+    parent.remove_child(placeholder)
+    placeholder.queue_free()
+    parent.add_child(replacement)
+    parent.move_child(replacement, idx)
+
+func _setup_prompt_panel():
+    var popup = load(MOD_PATH + "/scenes/PromptPanel.tscn").instance()
+    popup.connect("popup_hide", self, "_on_prompt_popup_hide")
+
+    # Apply mod styles
+    popup.get_node("Panel").add_stylebox_override("panel", _PANEL_BG)
+    popup.get_node("Panel/Margin/Outer/Scroll/Columns/ColumnSeparator").add_stylebox_override("panel", _SEPARATOR_BG)
+
+    _prompt_scroll = popup.get_node("Panel/Margin/Outer/Scroll")
+    var left_col = popup.get_node("Panel/Margin/Outer/Scroll/Columns/LeftColumn")
+    var right_col = popup.get_node("Panel/Margin/Outer/Scroll/Columns/RightColumn")
+
+    # --- Left column: Insert ExpandingInputs at placeholders ---
+    positive_input = _instance_expanding_input(popup, Vector2(INPUT_WIDTH, INPUT_HEIGHT))
+    _replace_placeholder(left_col.get_node("PositiveInputPlaceholder"), positive_input)
+
+    clothing_input = _instance_expanding_input(popup, Vector2(0, INPUT_HEIGHT))
+    clothing_input.set_h_size_flags(Control.SIZE_EXPAND_FILL)
+    _replace_placeholder(left_col.get_node("ClothingRow/ClothingInputPlaceholder"), clothing_input)
+
+    negative_input = _instance_expanding_input(popup, Vector2(INPUT_WIDTH, INPUT_HEIGHT))
+    _replace_placeholder(left_col.get_node("NegativeInputPlaceholder"), negative_input)
+
+    # Wire left-column signals
+    left_col.get_node("ClothingRow/FromEquipmentBtn").connect('pressed', self, '_on_from_equipment_pressed')
+    left_col.get_node("GeneratePromptsBtn").connect('pressed', self, '_generate_prompts', [true])
+
+    # Insert PromptOutput sub-scenes at placeholders
+    _replace_placeholder(left_col.get_node("ClothedOutputPlaceholder"),
+        _instance_prompt_output(popup, PromptOutput.CLOTHED, "Clothed Prompt"))
+    _replace_placeholder(left_col.get_node("ClothedNegOutputPlaceholder"),
+        _instance_prompt_output(popup, PromptOutput.CLOTHED_NEGATIVE, "Clothed Negative Prompt"))
+    _replace_placeholder(left_col.get_node("NudeOutputPlaceholder"),
+        _instance_prompt_output(popup, PromptOutput.NUDE, "Nude Prompt"))
+    _replace_placeholder(left_col.get_node("NudeNegOutputPlaceholder"),
+        _instance_prompt_output(popup, PromptOutput.NUDE_NEGATIVE, "Nude Negative Prompt"))
+
+    # --- Right column: grab node references and wire signals ---
+    comfyui_url_input = right_col.get_node("UrlRow/UrlInput")
+    comfyui_connect_button = right_col.get_node("UrlRow/ConnectBtn")
+    comfyui_connect_button.connect("pressed", self, "_on_connect_pressed")
+
+    status_label = right_col.get_node("StatusLabel")
+    model_dropdown = right_col.get_node("ModelDropdown")
+    model_dropdown.add_item("(connect first)")
+    model_dropdown.connect("item_selected", self, "_on_model_item_selected")
+
+    steps_input = right_col.get_node("SettingsRow1/StepsCol/StepsInput")
+    cfg_input = right_col.get_node("SettingsRow1/CfgCol/CfgInput")
+    denoise_input = right_col.get_node("SettingsRow1/DenoiseCol/DenoiseInput")
+    width_input = right_col.get_node("SettingsRow2/WidthCol/WidthInput")
+    height_input = right_col.get_node("SettingsRow2/HeightCol/HeightInput")
+
+    right_col.get_node("SettingsBtn").connect("pressed", self, "_on_settings_pressed")
+
+    btn_generate_body = right_col.get_node("GenBodyBtn")
+    btn_generate_body.connect("pressed", self, "_on_gen_body")
+
+    btn_generate_nude = right_col.get_node("NudeRow/GenNudeBtn")
+    btn_generate_nude.connect("pressed", self, "_on_gen_nude")
+    btn_nude_from_body = right_col.get_node("NudeRow/NudeFromBodyBtn")
+    btn_nude_from_body.connect("pressed", self, "_on_gen_nude_from_body")
+
+    btn_generate_pregnant = right_col.get_node("PregRow/GenPregBtn")
+    btn_generate_pregnant.connect("pressed", self, "_on_gen_pregnant")
+    btn_pregnant_from_body = right_col.get_node("PregRow/PregFromBodyBtn")
+    btn_pregnant_from_body.connect("pressed", self, "_on_gen_pregnant_from_body")
+
+    btn_generate_nude_pregnant = right_col.get_node("NudePregRow/GenNudePregBtn")
+    btn_generate_nude_pregnant.connect("pressed", self, "_on_gen_nude_pregnant")
+    btn_nude_pregnant_from_nude = right_col.get_node("NudePregRow/NudePregFromNudeBtn")
+    btn_nude_pregnant_from_nude.connect("pressed", self, "_on_gen_nude_pregnant_from_nude")
+
+    btn_portrait_from_body = right_col.get_node("PortraitRow/PortraitFromBodyBtn")
+    btn_portrait_from_body.connect("pressed", self, "_on_gen_portrait_from_body")
+    btn_portrait_from_nude = right_col.get_node("PortraitRow/PortraitFromNudeBtn")
+    btn_portrait_from_nude.connect("pressed", self, "_on_gen_portrait_from_nude")
+
+    return popup
+
+func _setup_preview_popup():
+    var popup = load(MOD_PATH + "/scenes/PreviewPopup.tscn").instance()
+
+    popup.get_node("Panel").add_stylebox_override("panel", _PANEL_BG)
+
+    preview_title_label = popup.get_node("Panel/Margin/Outer/TitleLabel")
+    preview_images_row = popup.get_node("Panel/Margin/Outer/ImagesRow")
+    preview_images_row.set_alignment(BoxContainer.ALIGN_CENTER)
+
+    var try_again_button = popup.get_node("Panel/Margin/Outer/TryAgainBtn")
+    try_again_button.connect("pressed", self, "_on_try_again_pressed")
+
+    return popup
+
+func _setup_settings_popup():
+    var popup = load(MOD_PATH + "/scenes/SettingsPopup.tscn").instance()
+
+    popup.get_node("Panel").add_stylebox_override("panel", _PANEL_BG)
+
+    # Workflow dropdowns
+    var wf_row = popup.get_node("Panel/Margin/Outer/WorkflowRow")
+    for type_key in ["txt2img", "img2img", "portrait"]:
+        var col_name = type_key.capitalize().replace("2", "2") + "Col"
+        # Node names: Txt2imgCol, Img2imgCol, PortraitCol
+        match type_key:
+            "txt2img":
+                col_name = "Txt2imgCol"
+            "img2img":
+                col_name = "Img2imgCol"
+            "portrait":
+                col_name = "PortraitCol"
+        var dd = wf_row.get_node(col_name + "/" + col_name.replace("Col", "Dropdown"))
+        dd.connect("item_selected", self, "_on_workflow_selected", [type_key])
+        _workflow_dropdowns[type_key] = dd
+
+    # LoRA tab buttons
+    var tab_row = popup.get_node("Panel/Margin/Outer/TabRow")
+    var tab_map = {"global": "GlobalTab", "race": "RaceTab", "sex": "SexTab"}
+    for tab_name in tab_map.keys():
+        var btn = tab_row.get_node(tab_map[tab_name])
+        btn.connect("pressed", self, "_on_lora_tab_pressed", [tab_name])
+        _lora_tab_buttons[tab_name] = btn
+
+    # Sub-key container
+    _lora_subkey_container = popup.get_node("Panel/Margin/Outer/SubkeyContainer")
+    _lora_subkey_dropdown = _lora_subkey_container.get_node("SubkeyDropdown")
+    _lora_subkey_dropdown.connect("item_selected", self, "_on_lora_subkey_changed")
+
+    # LoRA entries
+    _lora_entries_container = popup.get_node("Panel/Margin/Outer/Scroll/LoraEntries")
+
+    # Add LoRA row
+    var add_row = popup.get_node("Panel/Margin/Outer/AddRow")
+    _lora_search = add_row.get_node("LoraSearch")
+    _lora_search.connect("text_changed", self, "_on_lora_search_changed")
+    _lora_search.connect("focus_entered", self, "_on_lora_search_focused")
+    _lora_search.connect("focus_exited", self, "_on_lora_search_unfocused")
+
+    _lora_weight_input = add_row.get_node("WeightInput")
+    add_row.get_node("AddBtn").connect("pressed", self, "_on_add_lora_pressed")
+
+    # FilterableDropdown for LoRA search
+    _lora_popup = _FilterableDropdownScene.instance()
+    _lora_popup.set_script(_FilterableDropdownScript)
+    _lora_popup.setup(MOD_PATH)
+    _lora_popup.connect("item_selected", self, "_on_lora_selected")
+    popup.add_child(_lora_popup)
+
+    return popup
+
+func _build_prompting_button():
+    var button = TextureButton.new()
+    button.set_theme(MAIN_THEME)
+    button.set_tooltip("Generate AI prompts")
+    button.set_normal_texture(input_handler.loadimage(MOD_PATH + "/resources/images/button_prompting.png"))
+    button.set_pressed_texture(input_handler.loadimage(MOD_PATH + "/resources/images/button_prompting_pressed.png"))
+    button.set_hover_texture(input_handler.loadimage(MOD_PATH + "/resources/images/button_prompting_hover.png"))
+    button.set_margin(0, 1240) # Left
+    button.set_margin(1, 976) # Top
+    return button
+
+# --- Close Buttons ---
 
 func _add_close_buttons():
     _add_close_button_to_popup(prompt_popup)
     preview_close_btn = _add_close_button_to_popup(preview_popup)
     _add_close_button_to_popup(settings_popup)
 
-# Loads the game's standard close button scene, adds it as a child of the
-# popup, and anchors it to the top-right corner so it tracks popup size
-# changes automatically — no global-position arithmetic needed.
 func _add_close_button_to_popup(popup):
     var btn = load(ResourceScripts.scenedict.close).instance()
     popup.add_child(btn)
     btn.connect("pressed", popup, "hide")
-    # Anchor right and top edges to the popup's top-right corner.
     btn.set_anchor(MARGIN_LEFT, 1.0)
     btn.set_anchor(MARGIN_TOP, 0.0)
     btn.set_anchor(MARGIN_RIGHT, 1.0)
     btn.set_anchor(MARGIN_BOTTOM, 0.0)
-    # Negative left margin pulls the button leftward from the right edge.
-    # 32 px is a safe estimate for the standard close button; it snaps flush
-    # to the corner with no gap.
     btn.set_margin(MARGIN_LEFT, -32)
     btn.set_margin(MARGIN_RIGHT, 0)
     btn.set_margin(MARGIN_TOP, 0)
     btn.set_margin(MARGIN_BOTTOM, 32)
     return btn
+
+# --- ComfyUI Client Setup ---
 
 func _setup_comfyui_client():
     comfyui_client = modding_core.modules.PortraitGenerator_comfyui
@@ -157,22 +371,22 @@ func _setup_comfyui_client():
         lora_config.load_settings()
     if comfyui_client == null:
         return
-    # Reparent into our scene tree so _process() and HTTPRequest children work
     var parent = comfyui_client.get_parent()
     if parent != null:
         parent.remove_child(comfyui_client)
     add_child(comfyui_client)
-    # Connect signals
-    comfyui_client.connect("connected", self , "_on_comfyui_connected")
-    comfyui_client.connect("disconnected", self , "_on_comfyui_disconnected")
-    comfyui_client.connect("connection_error", self , "_on_comfyui_connection_error")
-    comfyui_client.connect("models_loaded", self , "_on_models_loaded")
-    comfyui_client.connect("images_ready", self , "_on_images_ready")
-    comfyui_client.connect("upload_complete", self , "_on_upload_complete")
-    comfyui_client.connect("upload_error", self , "_on_upload_error")
-    comfyui_client.connect("error", self , "_on_comfyui_error")
-    comfyui_client.connect("loras_loaded", self , "_on_loras_loaded")
-    comfyui_client.connect("progress_update", self , "_on_comfyui_progress_update")
+    comfyui_client.connect("connected", self, "_on_comfyui_connected")
+    comfyui_client.connect("disconnected", self, "_on_comfyui_disconnected")
+    comfyui_client.connect("connection_error", self, "_on_comfyui_connection_error")
+    comfyui_client.connect("models_loaded", self, "_on_models_loaded")
+    comfyui_client.connect("images_ready", self, "_on_images_ready")
+    comfyui_client.connect("upload_complete", self, "_on_upload_complete")
+    comfyui_client.connect("upload_error", self, "_on_upload_error")
+    comfyui_client.connect("error", self, "_on_comfyui_error")
+    comfyui_client.connect("loras_loaded", self, "_on_loras_loaded")
+    comfyui_client.connect("progress_update", self, "_on_comfyui_progress_update")
+
+# --- Prompt Panel ---
 
 func toggle_prompt_panel():
     if not prompt_popup.visible:
@@ -221,485 +435,15 @@ func _on_from_equipment_pressed():
         return
     clothing_input.set_text(modding_core.modules.PortraitGenerator_prompting.build_equipment_prompt(active_person))
 
-func build_prompting_button():
-    var button = TextureButton.new()
-    button.set_theme(MAIN_THEME)
-    button.set_tooltip("Generate AI prompts")
-    button.set_normal_texture(input_handler.loadimage(MOD_PATH + "/resources/images/button_prompting.png"))
-    button.set_pressed_texture(input_handler.loadimage(MOD_PATH + "/resources/images/button_prompting_pressed.png"))
-    button.set_hover_texture(input_handler.loadimage(MOD_PATH + "/resources/images/button_prompting_hover.png"))
-    button.set_margin(0, 1240) # Left
-    button.set_margin(1, 976) # Top
-    return button
-
-func _make_panel_bg():
-    var bg = StyleBoxFlat.new()
-    bg.set_bg_color(Color(0.16, 0.1, 0.12, 1))
-    bg.set_border_color(Color(0.85, 0.85, 0.6, 1))
-    bg.set_border_width(0, 3)
-    bg.set_border_width(1, 3)
-    bg.set_border_width(2, 3)
-    bg.set_border_width(3, 3)
-    return bg
-
-func build_prompt_panel():
-    var POPUP_W = 1200
-    var POPUP_H = 750
-    var LEFT_COL_W = 450
-    var RIGHT_COL_W = 500
-    var SEP_W = 10
-
-    var popup = Popup.new()
-    popup.set_theme(MAIN_THEME)
-    popup.set_anchors_and_margins_preset(Control.PRESET_CENTER_LEFT)
-    popup.set_size(Vector2(POPUP_W, POPUP_H))
-    popup.set_margin(MARGIN_LEFT, 20)
-    popup.connect("popup_hide", self , "_on_prompt_popup_hide")
-
-    # Panel anchored to fill the popup so the background always covers the content.
-    var panel = Panel.new()
-    panel.set_anchors_and_margins_preset(Control.PRESET_WIDE)
-    panel.add_stylebox_override('panel', _make_panel_bg())
-    popup.add_child(panel)
-
-    # Customize input field colors on our cloned theme
-    MAIN_THEME.set_color('clear_button_color', 'LineEdit', Color(0, 0, 0, 1))
-    MAIN_THEME.set_color('cursor_color', 'LineEdit', Color(0, 0, 0, 0.9))
-    MAIN_THEME.set_color('font_color_uneditable', 'LineEdit', Color(0, 0, 0, 0.8))
-
-    # Container exactly fills the panel, then a fixed-pixel margin via MarginContainer
-    var margin = MarginContainer.new()
-    margin.set_anchors_and_margins_preset(Control.PRESET_WIDE)
-    margin.add_constant_override("margin_left", 10)
-    margin.add_constant_override("margin_right", 10)
-    margin.add_constant_override("margin_top", 10)
-    margin.add_constant_override("margin_bottom", 10)
-    panel.add_child(margin)
-
-    # Outer VBox is the sole child of the MarginContainer
-    var outer = VBoxContainer.new()
-    outer.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    outer.set_v_size_flags(Control.SIZE_EXPAND_FILL)
-    margin.add_child(outer)
-
-    # ScrollContainer fills the VBox; columns HBox is its sole child.
-    # Horizontal scroll is suppressed by giving columns SIZE_EXPAND_FILL so it
-    # never exceeds the container width. Vertical scroll appears automatically
-    # when label fonts make the content taller than the popup.
-    var scroll = ScrollContainer.new()
-    scroll.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    scroll.set_v_size_flags(Control.SIZE_EXPAND_FILL)
-    outer.add_child(scroll)
-    _prompt_scroll = scroll
-
-    # Two-column content row
-    var columns = HBoxContainer.new()
-    columns.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    scroll.add_child(columns)
-
-    # --- Left column: prompt inputs and outputs ---
-    var left_col = VBoxContainer.new()
-    left_col.set_custom_minimum_size(Vector2(LEFT_COL_W, 0))
-    # No EXPAND flag → HBoxContainer gives this column exactly its minimum width.
-    # Right column has SIZE_EXPAND_FILL and absorbs all remaining space.
-    columns.add_child(left_col)
-
-    var positive_label = Label.new()
-    positive_label.set_text("Positive prompt")
-    var pos_pair = _make_expanding_input(INPUT_WIDTH, INPUT_HEIGHT)
-    _positive_placeholder = pos_pair[0]
-    positive_input = pos_pair[1]
-    left_col.add_child(positive_label)
-    left_col.add_child(_positive_placeholder)
-
-    var clothing_label = Label.new()
-    clothing_label.set_text("Clothing description")
-    var clothing_row = HBoxContainer.new()
-    var clo_pair = _make_expanding_input(0, INPUT_HEIGHT)
-    _clothing_placeholder = clo_pair[0]
-    _clothing_placeholder.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    clothing_input = clo_pair[1]
-    clothing_row.add_child(_clothing_placeholder)
-    var from_equipment_button = Button.new()
-    from_equipment_button.set_text("From equipment")
-    from_equipment_button.set_custom_minimum_size(Vector2(0, INPUT_HEIGHT))
-    from_equipment_button.connect('pressed', self , '_on_from_equipment_pressed')
-    clothing_row.add_child(from_equipment_button)
-    left_col.add_child(clothing_label)
-    left_col.add_child(clothing_row)
-
-    var negative_label = Label.new()
-    negative_label.set_text("Negative prompt")
-    var neg_pair = _make_expanding_input(INPUT_WIDTH, INPUT_HEIGHT)
-    _negative_placeholder = neg_pair[0]
-    negative_input = neg_pair[1]
-    left_col.add_child(negative_label)
-    left_col.add_child(_negative_placeholder)
-
-    var generate_prompts_button = Button.new()
-    generate_prompts_button.set_text("Generate Prompts")
-    generate_prompts_button.connect('pressed', self , '_generate_prompts', [true])
-    left_col.add_child(generate_prompts_button)
-
-    left_col.add_child(_build_prompt_output(PromptOutput.CLOTHED, "Clothed Prompt"))
-    left_col.add_child(_build_prompt_output(PromptOutput.CLOTHED_NEGATIVE, "Clothed Negative Prompt"))
-    left_col.add_child(_build_prompt_output(PromptOutput.NUDE, "Nude Prompt"))
-    left_col.add_child(_build_prompt_output(PromptOutput.NUDE_NEGATIVE, "Nude Negative Prompt"))
-
-    # Thin panel acting as a column divider; VSeparator uses a scrollbar-like theme style
-    var vsep = Panel.new()
-    vsep.set_custom_minimum_size(Vector2(SEP_W, 0))
-    var sep_style = StyleBoxFlat.new()
-    sep_style.set_bg_color(Color(0.5, 0.5, 0.4, 0.4))
-    vsep.add_stylebox_override("panel", sep_style)
-    columns.add_child(vsep)
-
-    # --- Right column: ComfyUI controls ---
-    var right_col = VBoxContainer.new()
-    right_col.set_custom_minimum_size(Vector2(RIGHT_COL_W, 0))
-    columns.add_child(right_col)
-
-    var comfyui_label = Label.new()
-    comfyui_label.set_text("ComfyUI Server")
-    right_col.add_child(comfyui_label)
-
-    var url_row = HBoxContainer.new()
-    comfyui_url_input = LineEdit.new()
-    comfyui_url_input.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    comfyui_url_input.set_custom_minimum_size(Vector2(0, INPUT_HEIGHT))
-    comfyui_url_input.set_text("http://127.0.0.1:8000")
-    comfyui_url_input.cursor_set_blink_enabled(true)
-    comfyui_url_input.set_placeholder("http://host:port")
-    url_row.add_child(comfyui_url_input)
-    comfyui_connect_button = Button.new()
-    comfyui_connect_button.set_text("Connect")
-    comfyui_connect_button.set_custom_minimum_size(Vector2(90, INPUT_HEIGHT))
-    comfyui_connect_button.connect("pressed", self , "_on_connect_pressed")
-    url_row.add_child(comfyui_connect_button)
-    right_col.add_child(url_row)
-
-    status_label = Label.new()
-    status_label.set_text("Status: Disconnected")
-    right_col.add_child(status_label)
-
-    var model_label = Label.new()
-    model_label.set_text("Model:")
-    right_col.add_child(model_label)
-    model_dropdown = OptionButton.new()
-    model_dropdown.set_theme(OPTIONS_THEME)
-    model_dropdown.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    model_dropdown.set_custom_minimum_size(Vector2(0, INPUT_HEIGHT))
-    model_dropdown.add_item("(connect first)")
-    model_dropdown.set_disabled(true)
-    model_dropdown.connect("item_selected", self , "_on_model_item_selected")
-    right_col.add_child(model_dropdown)
-
-    # --- Generation settings ---
-    var settings_row1 = HBoxContainer.new()
-    settings_row1.add_child(_make_labeled_field("Steps:", str(DEFAULT_STEPS), "steps_input"))
-    settings_row1.add_child(_make_labeled_field("CFG:", str(DEFAULT_CFG), "cfg_input"))
-    settings_row1.add_child(_make_labeled_field("Denoise:", str(DEFAULT_DENOISE), "denoise_input"))
-    right_col.add_child(settings_row1)
-
-    var settings_row2 = HBoxContainer.new()
-    settings_row2.add_child(_make_labeled_field("Width:", str(DEFAULT_WIDTH), "width_input"))
-    settings_row2.add_child(_make_labeled_field("Height:", str(DEFAULT_HEIGHT), "height_input"))
-    right_col.add_child(settings_row2)
-
-    # Settings button
-    var settings_button = Button.new()
-    settings_button.set_text("Workflow settings...")
-    settings_button.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    settings_button.set_custom_minimum_size(Vector2(0, 36))
-    settings_button.connect("pressed", self , "_on_settings_pressed")
-    right_col.add_child(settings_button)
-
-    # --- Generation button groups ---
-    btn_generate_body = _make_gen_button("New body", "_on_gen_body")
-    right_col.add_child(btn_generate_body)
-
-    var nude_row = HBoxContainer.new()
-    btn_generate_nude = _make_gen_button("New nude", "_on_gen_nude")
-    btn_nude_from_body = _make_gen_button("Nude from body", "_on_gen_nude_from_body")
-    nude_row.add_child(btn_generate_nude)
-    nude_row.add_child(btn_nude_from_body)
-    right_col.add_child(nude_row)
-
-    var preg_row = HBoxContainer.new()
-    btn_generate_pregnant = _make_gen_button("New pregnant", "_on_gen_pregnant")
-    btn_pregnant_from_body = _make_gen_button("Pregnant from body", "_on_gen_pregnant_from_body")
-    preg_row.add_child(btn_generate_pregnant)
-    preg_row.add_child(btn_pregnant_from_body)
-    right_col.add_child(preg_row)
-
-    var nudepreg_row = HBoxContainer.new()
-    btn_generate_nude_pregnant = _make_gen_button("New nude pregnant", "_on_gen_nude_pregnant")
-    btn_nude_pregnant_from_nude = _make_gen_button("Nude preg. from nude", "_on_gen_nude_pregnant_from_nude")
-    nudepreg_row.add_child(btn_generate_nude_pregnant)
-    nudepreg_row.add_child(btn_nude_pregnant_from_nude)
-    right_col.add_child(nudepreg_row)
-
-    var portrait_row = HBoxContainer.new()
-    btn_portrait_from_body = _make_gen_button("Portrait from body", "_on_gen_portrait_from_body")
-    btn_portrait_from_nude = _make_gen_button("Portrait from nude", "_on_gen_portrait_from_nude")
-    portrait_row.add_child(btn_portrait_from_body)
-    portrait_row.add_child(btn_portrait_from_nude)
-    right_col.add_child(portrait_row)
-
-    _expanding_inputs = [
-        [positive_input, _positive_placeholder],
-        [clothing_input, _clothing_placeholder],
-        [negative_input, _negative_placeholder],
-        [clothed_prompt_output, _clothed_prompt_placeholder],
-        [clothed_negative_prompt_output, _clothed_negative_prompt_placeholder],
-        [nude_prompt_output, _nude_prompt_placeholder],
-        [nude_negative_prompt_output, _nude_negative_prompt_placeholder],
-    ]
-
-    return popup
-
-func build_preview_popup():
-    var popup = Popup.new()
-    popup.set_theme(MAIN_THEME)
-    popup.set_size(Vector2(400, 480))
-    popup.set_anchors_and_margins_preset(Control.PRESET_CENTER_LEFT)
-    popup.set_margin(MARGIN_LEFT, 20)
-
-    # Panel anchored to fill the popup so the background always covers the content.
-    var panel = Panel.new()
-    panel.set_anchors_and_margins_preset(Control.PRESET_WIDE)
-    panel.add_stylebox_override("panel", _make_panel_bg())
-    popup.add_child(panel)
-
-    var margin = MarginContainer.new()
-    margin.set_anchors_and_margins_preset(Control.PRESET_WIDE)
-    margin.add_constant_override("margin_left", 10)
-    margin.add_constant_override("margin_right", 10)
-    margin.add_constant_override("margin_top", 10)
-    margin.add_constant_override("margin_bottom", 10)
-    panel.add_child(margin)
-
-    var outer = VBoxContainer.new()
-    outer.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    outer.set_v_size_flags(Control.SIZE_EXPAND_FILL)
-    margin.add_child(outer)
-
-    preview_title_label = Label.new()
-    preview_title_label.set_text("Generated Image")
-    preview_title_label.set_align(Label.ALIGN_CENTER)
-    outer.add_child(preview_title_label)
-
-    # Image row — populated dynamically when images arrive
-    preview_images_row = HBoxContainer.new()
-    preview_images_row.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    preview_images_row.set_alignment(BoxContainer.ALIGN_CENTER)
-    outer.add_child(preview_images_row)
-
-    var try_again_button = Button.new()
-    try_again_button.set_text("Try Again")
-    try_again_button.connect("pressed", self , "_on_try_again_pressed")
-    outer.add_child(try_again_button)
-
-    return popup
-
-func _build_prompt_output(output_type, description):
-    var total_layout = VBoxContainer.new()
-
-    var label = Label.new()
-    label.set_text(description)
-
-    var output_layout = HBoxContainer.new()
-    var out_pair = _make_expanding_input(INPUT_WIDTH, INPUT_HEIGHT)
-    var ph = out_pair[0]
-    var output = out_pair[1]
-    ph.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-
-    var copy_button = TextureButton.new()
-    copy_button.set_normal_texture(SAVE_ICON)
-
-    match output_type:
-        PromptOutput.CLOTHED:
-            clothed_prompt_output = output
-            _clothed_prompt_placeholder = ph
-            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.CLOTHED])
-        PromptOutput.CLOTHED_NEGATIVE:
-            clothed_negative_prompt_output = output
-            _clothed_negative_prompt_placeholder = ph
-            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.CLOTHED_NEGATIVE])
-        PromptOutput.NUDE:
-            nude_prompt_output = output
-            _nude_prompt_placeholder = ph
-            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.NUDE])
-        PromptOutput.NUDE_NEGATIVE:
-            nude_negative_prompt_output = output
-            _nude_negative_prompt_placeholder = ph
-            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.NUDE_NEGATIVE])
-
-    output.connect("text_changed", self , "_on_output_text_changed", [output_type])
-
-    output_layout.add_child(ph)
-    output_layout.add_child(copy_button)
-
-    total_layout.add_child(label)
-    total_layout.add_child(output_layout)
-
-    return total_layout
-
-# --- UI Helper Methods ---
-
-func _make_labeled_field(label_text, default_value, field_var_name):
-    var container = VBoxContainer.new()
-    container.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    var label = Label.new()
-    label.set_text(label_text)
-    container.add_child(label)
-    var input = LineEdit.new()
-    input.set_text(default_value)
-    input.set_custom_minimum_size(Vector2(0, 35))
-    input.cursor_set_blink_enabled(true)
-    container.add_child(input)
-    set(field_var_name, input)
-    return container
-
-func _make_gen_button(text, callback):
-    var button = Button.new()
-    button.set_text(text)
-    button.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    button.set_custom_minimum_size(Vector2(0, 36))
-    button.set_disabled(true)
-    button.connect("pressed", self , callback)
-    return button
-
-func _load_texture_from_path(path):
-    var img = Image.new()
-    if img.load(path) != OK:
-        return null
-    var tex = ImageTexture.new()
-    tex.create_from_image(img)
-    return tex
-
-# --- Expanding input helpers ---
-
-# Returns [placeholder_Control, TextEdit].
-# The placeholder holds space in the VBox layout at a fixed height. When focused,
-# the TextEdit is reparented to the popup (last child = renders on top) and sized
-# to fit its content. When blurred it is returned to the placeholder.
-func _make_expanding_input(min_width, min_height):
-    var te_style_inactive = StyleBoxFlat.new()
-    te_style_inactive.set_bg_color(Color(0.85, 0.85, 0.85, 1))
-    te_style_inactive.set_border_color(Color(0.2, 0.15, 0.15, 1))
-    te_style_inactive.set_border_width_all(1)
-
-    var te_style_active = te_style_inactive.duplicate()
-    te_style_active.set_bg_color(Color(1, 1, 1, 1))
-
-    var placeholder = Control.new()
-    placeholder.set_custom_minimum_size(Vector2(min_width, min_height))
-    placeholder.set_mouse_filter(Control.MOUSE_FILTER_IGNORE)
-
-    var te = TextEdit.new()
-    te.set_theme(MAIN_THEME)
-    te.add_stylebox_override("normal", te_style_inactive)
-    te.add_stylebox_override("focus", te_style_active)
-    te.add_stylebox_override("read_only", te_style_inactive)
-    te.add_color_override("font_color", Color(0.1, 0.05, 0.08, 1))
-    te.add_color_override("selection_color", Color(0.5, 0.4, 0.2, 0.7))
-    te.add_color_override("cursor_color", Color(0, 0, 0))
-    te.cursor_set_blink_enabled(true)
-    te.set_wrap_enabled(false)
-    te.set_anchors_and_margins_preset(Control.PRESET_WIDE)
-    te.connect("focus_entered", self , "_on_exp_focus_entered", [te])
-    te.connect("focus_exited", self , "_on_exp_focus_exited", [te])
-    te.connect("text_changed", self , "_on_exp_text_changed", [te])
-    placeholder.add_child(te)
-    return [placeholder, te]
-
-func _get_placeholder_for(te):
-    for pair in _expanding_inputs:
-        if pair[0] == te:
-            return pair[1]
-    return null
-
-# Only needs to act when the TextEdit is living in the popup (focused/expanded
-# state) and the scroll container has moved its placeholder underneath it.
-func _sync_exp_input(te, ph):
-    if not is_instance_valid(te) or not is_instance_valid(ph):
-        return
-    if te.get_parent() == prompt_popup:
-        te.rect_global_position = ph.get_global_rect().position
+func _on_prompt_popup_hide():
+    for input in _expanding_inputs:
+        if is_instance_valid(input):
+            input.return_to_placeholder()
 
 func _sync_all_exp_inputs():
-    for pair in _expanding_inputs:
-        _sync_exp_input(pair[0], pair[1])
-
-func _on_exp_focus_entered(te):
-    var ph = _get_placeholder_for(te)
-    if ph == null:
-        return
-    # Capture position before reparenting changes the tree.
-    var ph_rect = ph.get_global_rect()
-    # Move to popup so it is the last child and renders above everything.
-    if te.get_parent() != prompt_popup:
-        te.get_parent().remove_child(te)
-        prompt_popup.add_child(te)
-        te.grab_focus()
-    # Switch from fill-parent anchors to manual positioning before sizing.
-    te.set_anchors_and_margins_preset(Control.PRESET_TOP_LEFT)
-    te.rect_global_position = ph_rect.position
-    te.rect_size = ph_rect.size
-    # Defer wrap+expand so the reparent layout pass completes first.
-    call_deferred("_apply_expanded_state", te)
-
-func _apply_expanded_state(te):
-    if not te.has_focus():
-        return
-    var ph = _get_placeholder_for(te)
-    if ph == null:
-        return
-    te.set_wrap_enabled(true)
-    var ph_rect = ph.get_global_rect()
-    te.rect_global_position = ph_rect.position
-    te.rect_size = Vector2(ph_rect.size.x, _calc_exp_height(te, ph_rect.size.x))
-    # Adjust upward if expanding causes the bottom edge to go off-screen
-    var screen_rect = get_viewport().get_visible_rect()
-    var te_rect = te.get_global_rect()
-    if te_rect.position.y + te_rect.size.y > screen_rect.position.y + screen_rect.size.y:
-        te.rect_global_position = Vector2(te_rect.position.x, max(screen_rect.position.y, screen_rect.position.y + screen_rect.size.y - te_rect.size.y - 10))
-
-func _on_exp_focus_exited(te):
-    te.set_wrap_enabled(false)
-    var ph = _get_placeholder_for(te)
-    if ph == null:
-        return
-    if te.get_parent() != ph:
-        te.get_parent().remove_child(te)
-        ph.add_child(te)
-    te.set_anchors_and_margins_preset(Control.PRESET_WIDE)
-
-func _on_prompt_popup_hide():
-    # If the popup closes while a field is still reparented to it (e.g. the
-    # close button was clicked while a field had focus), return them to their
-    # placeholders so the next popup() shows a clean state.
-    for pair in _expanding_inputs:
-        var te = pair[0]
-        var ph = pair[1]
-        if not is_instance_valid(te) or not is_instance_valid(ph):
-            continue
-        te.set_wrap_enabled(false)
-        if te.get_parent() != ph:
-            te.get_parent().remove_child(te)
-            ph.add_child(te)
-        te.set_anchors_and_margins_preset(Control.PRESET_WIDE)
-
-func _on_exp_text_changed(te):
-    # TextEdit inserts a real newline on Enter; strip it to behave like LineEdit.
-    if "\n" in te.text:
-        te.text = te.text.replace("\n", "")
-        te.cursor_set_line(0)
-        te.cursor_set_column(te.text.length())
-        return # assignment above re-fires text_changed; expand happens on that pass
-    if te.has_focus():
-        call_deferred("_apply_expanded_state", te)
+    for input in _expanding_inputs:
+        if is_instance_valid(input):
+            input.sync_position()
 
 func _on_output_text_changed(output_type):
     if _updating_prompts:
@@ -713,19 +457,6 @@ func _on_output_text_changed(output_type):
             _output_user_modified["nude"] = true
         PromptOutput.NUDE_NEGATIVE:
             _output_user_modified["nude_negative"] = true
-
-# Estimates the pixel height needed to display all text in `te` when wrapped
-# to `width` pixels wide.
-func _calc_exp_height(te, width):
-    var font = te.get_font("font", "")
-    var txt = te.text
-    if font == null or txt.empty():
-        return INPUT_HEIGHT
-    var usable_w = max(1.0, width - 20.0)
-    var text_w = font.get_string_size(txt).x
-    var line_h = font.get_height() + 6
-    var visual_lines = max(1, int(ceil(text_w / usable_w)))
-    return int(visual_lines * line_h) + 16
 
 # --- Button State Management ---
 
@@ -770,23 +501,19 @@ func _update_button_states():
     var has_body = _has_body_image()
     var has_nude = _has_nude_image()
 
-    # txt2img buttons: only need connection + model
     btn_generate_body.set_disabled(not can_generate)
     btn_generate_nude.set_disabled(not can_generate)
     btn_generate_pregnant.set_disabled(not can_generate)
     btn_generate_nude_pregnant.set_disabled(not can_generate)
 
-    # img2img "from body" buttons: need connection + model + body image
     btn_nude_from_body.set_disabled(not (can_generate and has_body))
     btn_pregnant_from_body.set_disabled(not (can_generate and has_body))
 
-    # img2img "from nude" button: need connection + model + nude image
     btn_nude_pregnant_from_nude.set_disabled(not (can_generate and has_nude))
 
-    # Portrait buttons: need connection + model + respective source image
     btn_portrait_from_body.set_disabled(not (can_generate and has_body))
     btn_portrait_from_nude.set_disabled(not (can_generate and has_nude))
-    
+
 func _update_page():
 	gui_controller.slavepanel.BodyModule.update()
 	gui_controller.slavepanel.SummaryModule.show_summary()
@@ -822,12 +549,10 @@ func _save_ui_settings():
     if util != null:
         util.save_settings(data)
 
-
 func _load_ui_settings():
     if util == null:
         return
     var data = util.read_settings()
-    # Don't try to select the model because the dropdown will be empty at this point
     if data.has("url"):
         comfyui_url_input.set_text(data["url"])
     if data.has("steps"):
@@ -844,7 +569,6 @@ func _load_ui_settings():
         positive_input.set_text(data["positive_prompt"])
     if data.has("negative_prompt"):
         negative_input.set_text(data["negative_prompt"])
-    # Don't save the clothing prompt because it's unlikely to be relevant to the next character
 
 func _get_selected_model():
     var idx = model_dropdown.get_selected()
@@ -921,7 +645,6 @@ func _on_models_loaded(model_list):
         model_dropdown.add_item(model_name)
         model_dropdown.set_item_metadata(model_dropdown.get_item_count() - 1, model_name)
     model_dropdown.set_disabled(false)
-    # Try to select the user's previously selected model if it's in the new list
     var prev_model = (util.read_settings() if util != null else {}).get("model", "")
     if prev_model != "":
         for i in range(model_dropdown.get_item_count()):
@@ -945,24 +668,19 @@ func _rebuild_preview_images(textures):
     var MAX_POPUP_W = 1100
     var GAP = 8
     var MARGIN = 20
-    # CTRL_H covers: title label + save button + try-again button
-    # + VBox separations + outer margins (~10px top + 10px bottom).
     var CTRL_H = 160
 
     var gen_count = min(textures.size(), 5)
     var has_source = _source_texture != null
     var total_count = gen_count + (1 if has_source else 0)
 
-    # Update title to reflect workflow type
     if has_source:
         preview_title_label.set_text("Original → Generated")
     else:
         preview_title_label.set_text("Generated Image")
 
-    # Scale each image to be as tall as possible (max 600px) while keeping
-    # the total popup width under MAX_POPUP_W.
     var max_image_w = int((MAX_POPUP_W - MARGIN - (total_count - 1) * GAP) / total_count)
-    var IMAGE_W = min(max_image_w, int(600.0 * 768.0 / 1088.0)) # 600px tall -> 423px wide
+    var IMAGE_W = min(max_image_w, int(600.0 * 768.0 / 1088.0))
     var IMAGE_H = int(IMAGE_W * 1088.0 / 768.0)
 
     var popup_w = total_count * IMAGE_W + (total_count - 1) * GAP + MARGIN
@@ -970,48 +688,39 @@ func _rebuild_preview_images(textures):
 
     preview_popup.set_size(Vector2(popup_w, popup_h))
 
-    # Free old image columns immediately so there is no flash when the popup opens
     var old_children = preview_images_row.get_children()
     for child in old_children:
         preview_images_row.remove_child(child)
         child.free()
 
-    # Source image column (img2img only)
     if has_source:
         var col = VBoxContainer.new()
-
         var tex_rect = TextureRect.new()
         tex_rect.set_custom_minimum_size(Vector2(IMAGE_W, IMAGE_H))
         tex_rect.set_stretch_mode(TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
         tex_rect.set_expand(true)
         tex_rect.set_texture(_source_texture)
         col.add_child(tex_rect)
-
         var orig_label = Label.new()
         orig_label.set_text("Original")
         orig_label.set_align(Label.ALIGN_CENTER)
         orig_label.set_custom_minimum_size(Vector2(IMAGE_W, 0))
         col.add_child(orig_label)
-
         preview_images_row.add_child(col)
 
-    # Generated image columns
     for i in range(gen_count):
         var col = VBoxContainer.new()
-
         var tex_rect = TextureRect.new()
         tex_rect.set_custom_minimum_size(Vector2(IMAGE_W, IMAGE_H))
         tex_rect.set_stretch_mode(TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
         tex_rect.set_expand(true)
         tex_rect.set_texture(textures[i])
         col.add_child(tex_rect)
-
         var save_btn = Button.new()
         save_btn.set_text("Save")
         save_btn.set_custom_minimum_size(Vector2(IMAGE_W, 0))
-        save_btn.connect("pressed", self , "_on_save_image_pressed", [i])
+        save_btn.connect("pressed", self, "_on_save_image_pressed", [i])
         col.add_child(save_btn)
-
         preview_images_row.add_child(col)
 
 func _on_comfyui_progress_update(progress, max_progress):
@@ -1024,7 +733,6 @@ func _on_comfyui_error(message):
 
 # --- Generation Dispatch: txt2img ---
 
-# Config for each txt2img generation type: [positive_output, negative_output, suffix, status_text]
 var _txt2img_config = {}
 
 func _init_txt2img_config():
@@ -1168,230 +876,19 @@ func _apply_saved_image_stat(saved_path, category, person):
             person.set_stat('player_selected_body', true)
     _update_page()
 
+func _load_texture_from_path(path):
+    var img = Image.new()
+    if img.load(path) != OK:
+        return null
+    var tex = ImageTexture.new()
+    tex.create_from_image(img)
+    return tex
+
 # --- Settings Popup ---
 
 func _on_settings_pressed():
     _refresh_workflow_dropdowns()
     settings_popup.popup_centered()
-
-func build_settings_popup():
-    var popup = Popup.new()
-    popup.set_theme(MAIN_THEME)
-    popup.set_size(Vector2(700, 600))
-
-    var panel = Panel.new()
-    panel.set_anchors_and_margins_preset(Control.PRESET_WIDE)
-    panel.add_stylebox_override("panel", _make_panel_bg())
-    popup.add_child(panel)
-
-    var margin = MarginContainer.new()
-    margin.set_anchors_and_margins_preset(Control.PRESET_WIDE)
-    margin.add_constant_override("margin_left", 10)
-    margin.add_constant_override("margin_right", 10)
-    margin.add_constant_override("margin_top", 10)
-    margin.add_constant_override("margin_bottom", 10)
-    panel.add_child(margin)
-
-    var outer = VBoxContainer.new()
-    outer.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    outer.set_v_size_flags(Control.SIZE_EXPAND_FILL)
-    margin.add_child(outer)
-
-    var title = Label.new()
-    title.set_text("Settings")
-    title.set_align(Label.ALIGN_CENTER)
-    outer.add_child(title)
-
-    var sep1 = HSeparator.new()
-    outer.add_child(sep1)
-
-    # --- Workflow Selection ---
-    var wf_label = Label.new()
-    wf_label.set_text("Workflows")
-    outer.add_child(wf_label)
-
-    var wf_row = HBoxContainer.new()
-    wf_row.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    for type_key in ["txt2img", "img2img", "portrait"]:
-        var col = VBoxContainer.new()
-        col.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-        var lbl = Label.new()
-        lbl.set_text(type_key)
-        col.add_child(lbl)
-        var dd = OptionButton.new()
-        dd.set_theme(OPTIONS_THEME)
-        dd.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-        dd.set_custom_minimum_size(Vector2(0, 36))
-        dd.connect("item_selected", self , "_on_workflow_selected", [type_key])
-        col.add_child(dd)
-        wf_row.add_child(col)
-        _workflow_dropdowns[type_key] = dd
-    outer.add_child(wf_row)
-
-    var sep2 = HSeparator.new()
-    outer.add_child(sep2)
-
-    # --- LoRA Configuration ---
-    var lora_label = Label.new()
-    lora_label.set_text("LoRA Configuration")
-    outer.add_child(lora_label)
-
-    # Tab buttons
-    var tab_row = HBoxContainer.new()
-    for tab_name in ["global", "race", "sex"]:
-        var btn = Button.new()
-        btn.set_text(tab_name.capitalize())
-        btn.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-        btn.set_custom_minimum_size(Vector2(0, 32))
-        btn.set_toggle_mode(true)
-        btn.set_pressed(tab_name == "global")
-        btn.connect("pressed", self , "_on_lora_tab_pressed", [tab_name])
-        tab_row.add_child(btn)
-        _lora_tab_buttons[tab_name] = btn
-    outer.add_child(tab_row)
-
-    # Sub-key selector (for race/sex tabs)
-    _lora_subkey_container = HBoxContainer.new()
-    _lora_subkey_container.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    _lora_subkey_container.visible = false
-    var subkey_label = Label.new()
-    subkey_label.set_text("Filter:")
-    _lora_subkey_container.add_child(subkey_label)
-    _lora_subkey_dropdown = OptionButton.new()
-    _lora_subkey_dropdown.set_theme(OPTIONS_THEME)
-    _lora_subkey_dropdown.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    _lora_subkey_dropdown.set_custom_minimum_size(Vector2(0, 36))
-    _lora_subkey_dropdown.connect("item_selected", self , "_on_lora_subkey_changed")
-    _lora_subkey_container.add_child(_lora_subkey_dropdown)
-    outer.add_child(_lora_subkey_container)
-
-    # Scrollable LoRA entry list
-    var scroll = ScrollContainer.new()
-    scroll.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    scroll.set_v_size_flags(Control.SIZE_EXPAND_FILL)
-    outer.add_child(scroll)
-
-    _lora_entries_container = VBoxContainer.new()
-    _lora_entries_container.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    scroll.add_child(_lora_entries_container)
-
-    # Add LoRA row
-    var add_row = HBoxContainer.new()
-    add_row.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    _lora_search = LineEdit.new()
-    _lora_search.set_placeholder("(connect to ComfyUI)")
-    _lora_search.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    _lora_search.set_custom_minimum_size(Vector2(0, 36))
-    _lora_search.cursor_set_blink_enabled(true)
-    _lora_search.set_editable(false)
-    _lora_search.connect("text_changed", self , "_on_lora_search_changed")
-    _lora_search.connect("focus_entered", self , "_on_lora_search_focused")
-    _lora_search.connect("focus_exited", self , "_on_lora_search_unfocused")
-    add_row.add_child(_lora_search)
-    _lora_popup = Popup.new()
-    var lora_panel = PanelContainer.new()
-    lora_panel.add_stylebox_override("panel", _make_panel_bg())
-    lora_panel.set_anchors_and_margins_preset(Control.PRESET_WIDE)
-    _lora_list = ItemList.new()
-    _lora_list.set_focus_mode(Control.FOCUS_NONE)
-    _lora_list.set_custom_minimum_size(Vector2(0, 200))
-    _lora_list.set_h_size_flags(Control.SIZE_EXPAND_FILL)
-    _lora_list.set_v_size_flags(Control.SIZE_EXPAND_FILL)
-    _lora_list.set_auto_height(false)
-    _lora_list.connect("item_selected", self , "_on_lora_list_item_selected")
-    lora_panel.add_child(_lora_list)
-    _lora_popup.add_child(lora_panel)
-    popup.add_child(_lora_popup)
-    _lora_weight_input = LineEdit.new()
-    _lora_weight_input.set_text("1.0")
-    _lora_weight_input.set_custom_minimum_size(Vector2(60, 36))
-    _lora_weight_input.cursor_set_blink_enabled(true)
-    _lora_weight_input.set_placeholder("Weight")
-    add_row.add_child(_lora_weight_input)
-    var add_btn = Button.new()
-    add_btn.set_text("Add")
-    add_btn.set_custom_minimum_size(Vector2(60, 36))
-    add_btn.connect("pressed", self , "_on_add_lora_pressed")
-    add_row.add_child(add_btn)
-    outer.add_child(add_row)
-
-    return popup
-
-func _sort_by_lowercase(a, b):
-    return a.to_lower() < b.to_lower()
-
-func _on_loras_loaded(lora_list):
-    _available_loras = lora_list
-    _available_loras.sort_custom(self , "_sort_by_lowercase")
-    _selected_lora_name = ""
-    if lora_list.size() == 0:
-        _lora_search.set_placeholder("(no LoRAs found)")
-        _lora_search.set_editable(false)
-        return
-    _lora_search.set_editable(true)
-    _lora_search.set_placeholder("Search " + str(lora_list.size()) + " LoRAs...")
-    _lora_search.set_text("")
-
-func _on_lora_search_changed(new_text):
-    _filter_lora_popup(new_text)
-
-func _on_lora_search_focused():
-    _lora_search.select_all()
-    _filter_lora_popup(_lora_search.text)
-
-func _on_lora_search_unfocused():
-    if not _lora_popup.visible:
-        if _selected_lora_name != "":
-            _lora_search.set_text(_truncate(_selected_lora_name, 40))
-        else:
-            _lora_search.set_text("")
-
-func _filter_lora_popup(filter_text):
-    _lora_list.clear()
-    var query = filter_text.to_lower()
-    var count = 0
-    var max_visible = 50
-    for i in range(_available_loras.size()):
-        var lora_name = _available_loras[i]
-        if query == "" or lora_name.to_lower().find(query) != -1:
-            if count < max_visible:
-                _lora_list.add_item(lora_name)
-                _lora_list.set_item_metadata(count, i)
-            count += 1
-    if count == 0:
-        _lora_list.add_item("(no matches)")
-        _lora_list.set_item_disabled(0, true)
-        _lora_list.set_item_selectable(0, false)
-    elif count > max_visible:
-        var hint_idx = _lora_list.get_item_count()
-        _lora_list.add_item("(" + str(count - max_visible) + " more \u2014 type to narrow...)")
-        _lora_list.set_item_disabled(hint_idx, true)
-        _lora_list.set_item_selectable(hint_idx, false)
-    _show_lora_popup()
-
-func _show_lora_popup():
-    if _lora_list.get_item_count() == 0:
-        return
-    var rect = _lora_search.get_global_rect()
-    var popup_size = Vector2(rect.size.x, min(_lora_list.get_item_count() * 28, 200))
-    _lora_popup.popup(Rect2(Vector2(rect.position.x, rect.position.y + rect.size.y), popup_size))
-
-func _on_lora_list_item_selected(index):
-    var lora_idx = _lora_list.get_item_metadata(index)
-    if lora_idx == null:
-        return
-    _selected_lora_name = _available_loras[lora_idx]
-    # Defer so the current click event finishes processing before the
-    # popup disappears -- hiding synchronously lets the viewport
-    # re-route the same click to controls behind the popup.
-    call_deferred("_close_lora_popup")
-
-func _close_lora_popup():
-    _lora_popup.hide()
-    if _selected_lora_name != "":
-        _lora_search.set_text(_truncate(_selected_lora_name, 40))
-    else:
-        _lora_search.set_text("")
 
 func _refresh_workflow_dropdowns():
     if comfyui_client == null:
@@ -1417,6 +914,40 @@ func _on_workflow_selected(index, type_key):
     var name = dd.get_item_metadata(index)
     dd.set_text(name)
     lora_config.set_workflow(type_key, name)
+
+# --- LoRA Management ---
+
+func _on_loras_loaded(lora_list):
+    _available_loras = lora_list
+    _available_loras.sort_custom(self, "_sort_by_lowercase")
+    if lora_list.size() == 0:
+        _lora_search.set_placeholder("(no LoRAs found)")
+        _lora_search.set_editable(false)
+        return
+    _lora_search.set_editable(true)
+    _lora_search.set_placeholder("Search " + str(lora_list.size()) + " LoRAs...")
+    _lora_search.set_text("")
+    _lora_popup.set_items(_available_loras)
+
+func _sort_by_lowercase(a, b):
+    return a.to_lower() < b.to_lower()
+
+func _on_lora_search_changed(new_text):
+    _lora_popup.filter(new_text, _lora_search)
+
+func _on_lora_search_focused():
+    _lora_search.select_all()
+    _lora_popup.filter(_lora_search.text, _lora_search)
+
+func _on_lora_search_unfocused():
+    if not _lora_popup.visible:
+        if _lora_popup.selected_item != "":
+            _lora_search.set_text(_truncate(_lora_popup.selected_item, 40))
+        else:
+            _lora_search.set_text("")
+
+func _on_lora_selected(item_name):
+    _lora_search.set_text(_truncate(item_name, 40))
 
 # --- LoRA Tab Management ---
 
@@ -1459,7 +990,6 @@ func _get_current_subkey():
     return _lora_subkey_dropdown.get_item_metadata(idx)
 
 func _rebuild_lora_entries():
-    # Clear existing entries
     for child in _lora_entries_container.get_children():
         child.queue_free()
     if lora_config == null:
@@ -1482,16 +1012,16 @@ func _rebuild_lora_entries():
         var remove_btn = Button.new()
         remove_btn.set_text("X")
         remove_btn.set_custom_minimum_size(Vector2(32, 32))
-        remove_btn.connect("pressed", self , "_on_remove_lora_pressed", [_current_lora_tab, subkey, i])
+        remove_btn.connect("pressed", self, "_on_remove_lora_pressed", [_current_lora_tab, subkey, i])
         row.add_child(remove_btn)
         _lora_entries_container.add_child(row)
 
 func _on_add_lora_pressed():
-    if lora_config == null or _selected_lora_name == "":
+    if lora_config == null or _lora_popup.selected_item == "":
         return
     if _available_loras.size() == 0:
         return
-    var lora_name = _selected_lora_name
+    var lora_name = _lora_popup.selected_item
     var weight = 1.0
     if _lora_weight_input.text.is_valid_float():
         weight = float(_lora_weight_input.text)

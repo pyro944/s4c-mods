@@ -1,0 +1,135 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://assets/MainTheme.tres" type="Theme" id=1]
+[ext_resource path="res://assets/Themes_v2/UNIVERSAL/DropDown.tres" type="Theme" id=2]
+
+[node name="SettingsPopup" type="Popup"]
+theme = ExtResource( 1 )
+margin_right = 700.0
+margin_bottom = 600.0
+
+[node name="Panel" type="Panel" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+custom_constants/margin_left = 10
+custom_constants/margin_right = 10
+custom_constants/margin_top = 10
+custom_constants/margin_bottom = 10
+
+[node name="Outer" type="VBoxContainer" parent="Panel/Margin"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Title" type="Label" parent="Panel/Margin/Outer"]
+text = "Settings"
+align = 1
+
+[node name="Sep1" type="HSeparator" parent="Panel/Margin/Outer"]
+
+[node name="WorkflowLabel" type="Label" parent="Panel/Margin/Outer"]
+text = "Workflows"
+
+[node name="WorkflowRow" type="HBoxContainer" parent="Panel/Margin/Outer"]
+size_flags_horizontal = 3
+
+[node name="Txt2imgCol" type="VBoxContainer" parent="Panel/Margin/Outer/WorkflowRow"]
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/Margin/Outer/WorkflowRow/Txt2imgCol"]
+text = "txt2img"
+
+[node name="Txt2imgDropdown" type="OptionButton" parent="Panel/Margin/Outer/WorkflowRow/Txt2imgCol"]
+theme = ExtResource( 2 )
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+
+[node name="Img2imgCol" type="VBoxContainer" parent="Panel/Margin/Outer/WorkflowRow"]
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/Margin/Outer/WorkflowRow/Img2imgCol"]
+text = "img2img"
+
+[node name="Img2imgDropdown" type="OptionButton" parent="Panel/Margin/Outer/WorkflowRow/Img2imgCol"]
+theme = ExtResource( 2 )
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+
+[node name="PortraitCol" type="VBoxContainer" parent="Panel/Margin/Outer/WorkflowRow"]
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/Margin/Outer/WorkflowRow/PortraitCol"]
+text = "portrait"
+
+[node name="PortraitDropdown" type="OptionButton" parent="Panel/Margin/Outer/WorkflowRow/PortraitCol"]
+theme = ExtResource( 2 )
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+
+[node name="Sep2" type="HSeparator" parent="Panel/Margin/Outer"]
+
+[node name="LoraLabel" type="Label" parent="Panel/Margin/Outer"]
+text = "LoRA Configuration"
+
+[node name="TabRow" type="HBoxContainer" parent="Panel/Margin/Outer"]
+
+[node name="GlobalTab" type="Button" parent="Panel/Margin/Outer/TabRow"]
+text = "Global"
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 32 )
+toggle_mode = true
+pressed = true
+
+[node name="RaceTab" type="Button" parent="Panel/Margin/Outer/TabRow"]
+text = "Race"
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 32 )
+toggle_mode = true
+
+[node name="SexTab" type="Button" parent="Panel/Margin/Outer/TabRow"]
+text = "Sex"
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 32 )
+toggle_mode = true
+
+[node name="SubkeyContainer" type="HBoxContainer" parent="Panel/Margin/Outer"]
+visible = false
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="Panel/Margin/Outer/SubkeyContainer"]
+text = "Filter:"
+
+[node name="SubkeyDropdown" type="OptionButton" parent="Panel/Margin/Outer/SubkeyContainer"]
+theme = ExtResource( 2 )
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+
+[node name="Scroll" type="ScrollContainer" parent="Panel/Margin/Outer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LoraEntries" type="VBoxContainer" parent="Panel/Margin/Outer/Scroll"]
+size_flags_horizontal = 3
+
+[node name="AddRow" type="HBoxContainer" parent="Panel/Margin/Outer"]
+size_flags_horizontal = 3
+
+[node name="LoraSearch" type="LineEdit" parent="Panel/Margin/Outer/AddRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+caret_blink = true
+editable = false
+placeholder_text = "(connect to ComfyUI)"
+
+[node name="WeightInput" type="LineEdit" parent="Panel/Margin/Outer/AddRow"]
+rect_min_size = Vector2( 60, 36 )
+caret_blink = true
+text = "1.0"
+placeholder_text = "Weight"
+
+[node name="AddBtn" type="Button" parent="Panel/Margin/Outer/AddRow"]
+rect_min_size = Vector2( 60, 36 )
+text = "Add"
