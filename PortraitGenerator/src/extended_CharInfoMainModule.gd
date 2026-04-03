@@ -27,6 +27,10 @@ var _updating_prompts = false
 # All ExpandingInput instances — used for return_to_placeholder on popup hide
 var _expanding_inputs = []
 
+# Face prompts, not user-configurable
+var face_positive_prompt = ""
+var face_negative_prompt = ""
+
 # ComfyUI integration
 var comfyui_client = null
 var comfyui_url_input = null
@@ -429,6 +433,8 @@ func _generate_prompts(force = false):
     if force or not _output_user_modified["nude_negative"]:
         nude_negative_prompt_output.set_text(prompts.nude_negative)
         _output_user_modified["nude_negative"] = false
+    face_positive_prompt = prompts.face_positive
+    face_negative_prompt = prompts.face_negative
     _updating_prompts = false
 
 func _on_from_equipment_pressed():
@@ -829,18 +835,18 @@ func _on_upload_complete(uploaded_filename):
             pos = nude_prompt_output.text + ", pregnant"
             neg = nude_negative_prompt_output.text
         GenerationType.PORTRAIT_FROM_BODY:
-            pos = clothed_prompt_output.text
-            neg = clothed_negative_prompt_output.text
+            pos = face_positive_prompt
+            neg = face_negative_prompt
         GenerationType.PORTRAIT_FROM_NUDE:
-            pos = nude_prompt_output.text
-            neg = nude_negative_prompt_output.text
+            pos = face_positive_prompt
+            neg = face_negative_prompt
     var person = _generation_person if _generation_person != null else active_person
     var loras = lora_config.resolve_loras(person, _current_generation_type) if lora_config != null and person != null else []
     if _current_generation_type == GenerationType.PORTRAIT_FROM_BODY or \
             _current_generation_type == GenerationType.PORTRAIT_FROM_NUDE:
         var wf_name = lora_config.get_workflow_name("portrait") if lora_config != null else "default"
         status_label.set_text("Status: Generating portrait (face crop)...")
-        comfyui_client.generate_face_crop(person.get_full_name(), model, pos, neg, uploaded_filename, -1, _get_gen_steps(), _get_gen_cfg(), wf_name, loras)
+        comfyui_client.generate_face_crop(person.get_full_name(), model, pos, neg, uploaded_filename, _get_gen_denoise(), -1, _get_gen_steps(), _get_gen_cfg(), wf_name, loras)
     else:
         var wf_name = lora_config.get_workflow_name("img2img") if lora_config != null else "default"
         status_label.set_text("Status: Generating (img2img)...")

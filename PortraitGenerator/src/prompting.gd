@@ -69,16 +69,24 @@ func build_prompts(character, positive_user_tags, clothing_user_tags, negative_u
     var base_tags = subject_tags(sex, race_descriptor) + \
         age_tags(age, sex) + \
         body_tags + \
+        hair_tags(hair_color, hair_length, hair_style, beard, facial_hair_color) + \
         skin_tags(skin_color, skin_type, skin_coverage) + \
         eye_tags(eye_color, eye_shape) + \
-        hair_tags(hair_color, hair_length, hair_style, beard, facial_hair_color) + \
         body_type_tags(height, ass_size, sex) + \
         breasts_tags(breast_size, sex) + \
         wings_tags(wings, wings_color) + \
         tail_tags(tail, tail_color) + \
         horns_tags(horns, horns_color) + \
         ears_tags(ears)
-
+        
+    var positive_face_tags = subject_tags(sex, race_descriptor) + \
+        age_tags(age, sex) + \
+        hair_tags(hair_color, hair_length, hair_style, beard, facial_hair_color) + \
+        skin_tags(skin_color, skin_type, skin_coverage) + \
+        eye_tags(eye_color, eye_shape) + \
+        horns_tags(horns, horns_color) + \
+        ears_tags(ears)
+    
     var positive_tags = []
     if positive_user_tags:
         positive_tags.append(positive_user_tags)
@@ -104,19 +112,30 @@ func build_prompts(character, positive_user_tags, clothing_user_tags, negative_u
     var nude_prompt = ', '.join(nude_positive_tags)
 
     var nude_negative_tags = []
-    if negative_user_tags:
-        nude_negative_tags.append(negative_user_tags)
     nude_negative_tags += race_negative_tags + \
         sex_negative_tags
     if sex == 'futa' and not futa_have_balls():
         nude_negative_tags.append(FUTA_TESTICLES_NEGATIVE_OPTION)
     var nude_negative_prompt = ', '.join(nude_negative_tags)
+    var nude_positive_prompt = ', '.join(nude_positive_tags)
+    
+    var face_positive_prompt = ', '.join(positive_face_tags)
 
+    var negative_face_tags = []
+    if negative_user_tags:
+        negative_face_tags.append(negative_user_tags)
+    negative_face_tags += negative_face_tags + \
+        race_negative_tags + \
+        sex_negative_tags
+    var face_negative_prompt = ', '.join(negative_face_tags)
+    
     return {
         'clothed_positive': positive_prompt,
         'clothed_negative': negative_prompt,
         'nude_positive': nude_prompt,
-        'nude_negative': nude_negative_prompt
+        'nude_negative': nude_negative_prompt,
+        'face_positive': face_positive_prompt,
+        'face_negative': face_negative_prompt
     }
 
 func subject_tags(sex, race_descriptor):

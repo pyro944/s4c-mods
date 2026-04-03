@@ -184,8 +184,8 @@ func generate_img2img(character_name, model_name, positive_prompt, negative_prom
     var workflow = _build_img2img_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg, workflow_name, loras)
     _submit_workflow(workflow)
 
-func generate_face_crop(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed = -1, steps = 20, cfg = 8.0, workflow_name = "default", loras = []):
-    var workflow = _build_face_crop_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg, workflow_name, loras)
+func generate_face_crop(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise = 0.7, image_seed = -1, steps = 20, cfg = 8.0, workflow_name = "default", loras = []):
+    var workflow = _build_face_crop_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg, workflow_name, loras)
     _submit_workflow(workflow)
 
 func _submit_workflow(workflow):
@@ -539,7 +539,7 @@ func _build_img2img_workflow(character_name, model_name, positive_prompt, negati
     workflow = _populate_loras(workflow, loras)
     return workflow
 
-func _build_face_crop_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, image_seed, steps, cfg, workflow_name = "default", loras = []):
+func _build_face_crop_workflow(character_name, model_name, positive_prompt, negative_prompt, source_filename, denoise, image_seed, steps, cfg, workflow_name = "default", loras = []):
     image_seed = _resolve_seed(image_seed)
     var template = _load_workflow("portrait", workflow_name)
     if template == null:
@@ -551,6 +551,7 @@ func _build_face_crop_workflow(character_name, model_name, positive_prompt, nega
         "width": 256,
         "height": 256,
         "cfg_scale": cfg,
+        "denoise": denoise,
         "source_image": source_filename,
         "seed": image_seed
     })
