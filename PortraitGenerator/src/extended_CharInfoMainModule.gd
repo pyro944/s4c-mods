@@ -98,9 +98,10 @@ var _FilterableDropdownScript = null
 var _PANEL_BG = null
 var _SEPARATOR_BG = null
 
-func _init():
+func _ready():
     GenerationType = modding_core.modules.PortraitGenerator_util.GenerationType
 
+func _init():
     # Load shared resources
     _PANEL_BG = load(MOD_PATH + "/resources/styles/panel_bg.tres")
     _SEPARATOR_BG = load(MOD_PATH + "/resources/styles/column_separator.tres")
@@ -118,7 +119,7 @@ func _init():
     # Add prompting button below Talk
     var prompting_button = _build_prompting_button()
     add_child(prompting_button)
-    prompting_button.connect('pressed', self, 'toggle_prompt_panel')
+    prompting_button.connect('pressed', self , 'toggle_prompt_panel')
 
     # Construct popups from scenes
     prompt_popup = _setup_prompt_panel()
@@ -157,18 +158,18 @@ func _instance_prompt_output(popup_root, output_type, description):
     match output_type:
         PromptOutput.CLOTHED:
             clothed_prompt_output = input
-            copy_button.connect('pressed', self, '_copy_prompt_type_pressed', [PromptOutput.CLOTHED])
+            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.CLOTHED])
         PromptOutput.CLOTHED_NEGATIVE:
             clothed_negative_prompt_output = input
-            copy_button.connect('pressed', self, '_copy_prompt_type_pressed', [PromptOutput.CLOTHED_NEGATIVE])
+            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.CLOTHED_NEGATIVE])
         PromptOutput.NUDE:
             nude_prompt_output = input
-            copy_button.connect('pressed', self, '_copy_prompt_type_pressed', [PromptOutput.NUDE])
+            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.NUDE])
         PromptOutput.NUDE_NEGATIVE:
             nude_negative_prompt_output = input
-            copy_button.connect('pressed', self, '_copy_prompt_type_pressed', [PromptOutput.NUDE_NEGATIVE])
+            copy_button.connect('pressed', self , '_copy_prompt_type_pressed', [PromptOutput.NUDE_NEGATIVE])
 
-    input.connect("text_changed", self, "_on_output_text_changed", [output_type])
+    input.connect("text_changed", self , "_on_output_text_changed", [output_type])
     return output_node
 
 func _replace_placeholder(placeholder, replacement):
@@ -181,7 +182,7 @@ func _replace_placeholder(placeholder, replacement):
 
 func _setup_prompt_panel():
     var popup = load(MOD_PATH + "/scenes/PromptPanel.tscn").instance()
-    popup.connect("popup_hide", self, "_on_prompt_popup_hide")
+    popup.connect("popup_hide", self , "_on_prompt_popup_hide")
 
     # Apply mod styles
     popup.get_node("Panel").add_stylebox_override("panel", _PANEL_BG)
@@ -203,8 +204,8 @@ func _setup_prompt_panel():
     _replace_placeholder(left_col.get_node("NegativeInputPlaceholder"), negative_input)
 
     # Wire left-column signals
-    left_col.get_node("ClothingRow/FromEquipmentBtn").connect('pressed', self, '_on_from_equipment_pressed')
-    left_col.get_node("GeneratePromptsBtn").connect('pressed', self, '_generate_prompts', [true])
+    left_col.get_node("ClothingRow/FromEquipmentBtn").connect('pressed', self , '_on_from_equipment_pressed')
+    left_col.get_node("GeneratePromptsBtn").connect('pressed', self , '_generate_prompts', [true])
 
     # Insert PromptOutput sub-scenes at placeholders
     _replace_placeholder(left_col.get_node("ClothedOutputPlaceholder"),
@@ -219,12 +220,12 @@ func _setup_prompt_panel():
     # --- Right column: grab node references and wire signals ---
     comfyui_url_input = right_col.get_node("UrlRow/UrlInput")
     comfyui_connect_button = right_col.get_node("UrlRow/ConnectBtn")
-    comfyui_connect_button.connect("pressed", self, "_on_connect_pressed")
+    comfyui_connect_button.connect("pressed", self , "_on_connect_pressed")
 
     status_label = right_col.get_node("StatusLabel")
     model_dropdown = right_col.get_node("ModelDropdown")
     model_dropdown.add_item("(connect first)")
-    model_dropdown.connect("item_selected", self, "_on_model_item_selected")
+    model_dropdown.connect("item_selected", self , "_on_model_item_selected")
 
     steps_input = right_col.get_node("SettingsRow1/StepsCol/StepsInput")
     cfg_input = right_col.get_node("SettingsRow1/CfgCol/CfgInput")
@@ -232,30 +233,30 @@ func _setup_prompt_panel():
     width_input = right_col.get_node("SettingsRow2/WidthCol/WidthInput")
     height_input = right_col.get_node("SettingsRow2/HeightCol/HeightInput")
 
-    right_col.get_node("SettingsBtn").connect("pressed", self, "_on_settings_pressed")
+    right_col.get_node("SettingsBtn").connect("pressed", self , "_on_settings_pressed")
 
     btn_generate_body = right_col.get_node("GenBodyBtn")
-    btn_generate_body.connect("pressed", self, "_on_gen_body")
+    btn_generate_body.connect("pressed", self , "_on_gen_body")
 
     btn_generate_nude = right_col.get_node("NudeRow/GenNudeBtn")
-    btn_generate_nude.connect("pressed", self, "_on_gen_nude")
+    btn_generate_nude.connect("pressed", self , "_on_gen_nude")
     btn_nude_from_body = right_col.get_node("NudeRow/NudeFromBodyBtn")
-    btn_nude_from_body.connect("pressed", self, "_on_gen_nude_from_body")
+    btn_nude_from_body.connect("pressed", self , "_on_gen_nude_from_body")
 
     btn_generate_pregnant = right_col.get_node("PregRow/GenPregBtn")
-    btn_generate_pregnant.connect("pressed", self, "_on_gen_pregnant")
+    btn_generate_pregnant.connect("pressed", self , "_on_gen_pregnant")
     btn_pregnant_from_body = right_col.get_node("PregRow/PregFromBodyBtn")
-    btn_pregnant_from_body.connect("pressed", self, "_on_gen_pregnant_from_body")
+    btn_pregnant_from_body.connect("pressed", self , "_on_gen_pregnant_from_body")
 
     btn_generate_nude_pregnant = right_col.get_node("NudePregRow/GenNudePregBtn")
-    btn_generate_nude_pregnant.connect("pressed", self, "_on_gen_nude_pregnant")
+    btn_generate_nude_pregnant.connect("pressed", self , "_on_gen_nude_pregnant")
     btn_nude_pregnant_from_nude = right_col.get_node("NudePregRow/NudePregFromNudeBtn")
-    btn_nude_pregnant_from_nude.connect("pressed", self, "_on_gen_nude_pregnant_from_nude")
+    btn_nude_pregnant_from_nude.connect("pressed", self , "_on_gen_nude_pregnant_from_nude")
 
     btn_portrait_from_body = right_col.get_node("PortraitRow/PortraitFromBodyBtn")
-    btn_portrait_from_body.connect("pressed", self, "_on_gen_portrait_from_body")
+    btn_portrait_from_body.connect("pressed", self , "_on_gen_portrait_from_body")
     btn_portrait_from_nude = right_col.get_node("PortraitRow/PortraitFromNudeBtn")
-    btn_portrait_from_nude.connect("pressed", self, "_on_gen_portrait_from_nude")
+    btn_portrait_from_nude.connect("pressed", self , "_on_gen_portrait_from_nude")
 
     return popup
 
@@ -269,7 +270,7 @@ func _setup_preview_popup():
     preview_images_row.set_alignment(BoxContainer.ALIGN_CENTER)
 
     var try_again_button = popup.get_node("Panel/Margin/Outer/TryAgainBtn")
-    try_again_button.connect("pressed", self, "_on_try_again_pressed")
+    try_again_button.connect("pressed", self , "_on_try_again_pressed")
 
     return popup
 
@@ -291,7 +292,7 @@ func _setup_settings_popup():
             "portrait":
                 col_name = "PortraitCol"
         var dd = wf_row.get_node(col_name + "/" + col_name.replace("Col", "Dropdown"))
-        dd.connect("item_selected", self, "_on_workflow_selected", [type_key])
+        dd.connect("item_selected", self , "_on_workflow_selected", [type_key])
         _workflow_dropdowns[type_key] = dd
 
     # LoRA tab buttons
@@ -299,13 +300,13 @@ func _setup_settings_popup():
     var tab_map = {"global": "GlobalTab", "race": "RaceTab", "sex": "SexTab"}
     for tab_name in tab_map.keys():
         var btn = tab_row.get_node(tab_map[tab_name])
-        btn.connect("pressed", self, "_on_lora_tab_pressed", [tab_name])
+        btn.connect("pressed", self , "_on_lora_tab_pressed", [tab_name])
         _lora_tab_buttons[tab_name] = btn
 
     # Sub-key container
     _lora_subkey_container = popup.get_node("Panel/Margin/Outer/SubkeyContainer")
     _lora_subkey_dropdown = _lora_subkey_container.get_node("SubkeyDropdown")
-    _lora_subkey_dropdown.connect("item_selected", self, "_on_lora_subkey_changed")
+    _lora_subkey_dropdown.connect("item_selected", self , "_on_lora_subkey_changed")
 
     # LoRA entries
     _lora_entries_container = popup.get_node("Panel/Margin/Outer/Scroll/LoraEntries")
@@ -313,18 +314,18 @@ func _setup_settings_popup():
     # Add LoRA row
     var add_row = popup.get_node("Panel/Margin/Outer/AddRow")
     _lora_search = add_row.get_node("LoraSearch")
-    _lora_search.connect("text_changed", self, "_on_lora_search_changed")
-    _lora_search.connect("focus_entered", self, "_on_lora_search_focused")
-    _lora_search.connect("focus_exited", self, "_on_lora_search_unfocused")
+    _lora_search.connect("text_changed", self , "_on_lora_search_changed")
+    _lora_search.connect("focus_entered", self , "_on_lora_search_focused")
+    _lora_search.connect("focus_exited", self , "_on_lora_search_unfocused")
 
     _lora_weight_input = add_row.get_node("WeightInput")
-    add_row.get_node("AddBtn").connect("pressed", self, "_on_add_lora_pressed")
+    add_row.get_node("AddBtn").connect("pressed", self , "_on_add_lora_pressed")
 
     # FilterableDropdown for LoRA search
     _lora_popup = _FilterableDropdownScene.instance()
     _lora_popup.set_script(_FilterableDropdownScript)
     _lora_popup.setup(MOD_PATH)
-    _lora_popup.connect("item_selected", self, "_on_lora_selected")
+    _lora_popup.connect("item_selected", self , "_on_lora_selected")
     popup.add_child(_lora_popup)
 
     return popup
@@ -375,16 +376,16 @@ func _setup_comfyui_client():
     if parent != null:
         parent.remove_child(comfyui_client)
     add_child(comfyui_client)
-    comfyui_client.connect("connected", self, "_on_comfyui_connected")
-    comfyui_client.connect("disconnected", self, "_on_comfyui_disconnected")
-    comfyui_client.connect("connection_error", self, "_on_comfyui_connection_error")
-    comfyui_client.connect("models_loaded", self, "_on_models_loaded")
-    comfyui_client.connect("images_ready", self, "_on_images_ready")
-    comfyui_client.connect("upload_complete", self, "_on_upload_complete")
-    comfyui_client.connect("upload_error", self, "_on_upload_error")
-    comfyui_client.connect("error", self, "_on_comfyui_error")
-    comfyui_client.connect("loras_loaded", self, "_on_loras_loaded")
-    comfyui_client.connect("progress_update", self, "_on_comfyui_progress_update")
+    comfyui_client.connect("connected", self , "_on_comfyui_connected")
+    comfyui_client.connect("disconnected", self , "_on_comfyui_disconnected")
+    comfyui_client.connect("connection_error", self , "_on_comfyui_connection_error")
+    comfyui_client.connect("models_loaded", self , "_on_models_loaded")
+    comfyui_client.connect("images_ready", self , "_on_images_ready")
+    comfyui_client.connect("upload_complete", self , "_on_upload_complete")
+    comfyui_client.connect("upload_error", self , "_on_upload_error")
+    comfyui_client.connect("error", self , "_on_comfyui_error")
+    comfyui_client.connect("loras_loaded", self , "_on_loras_loaded")
+    comfyui_client.connect("progress_update", self , "_on_comfyui_progress_update")
 
 # --- Prompt Panel ---
 
@@ -719,7 +720,7 @@ func _rebuild_preview_images(textures):
         var save_btn = Button.new()
         save_btn.set_text("Save")
         save_btn.set_custom_minimum_size(Vector2(IMAGE_W, 0))
-        save_btn.connect("pressed", self, "_on_save_image_pressed", [i])
+        save_btn.connect("pressed", self , "_on_save_image_pressed", [i])
         col.add_child(save_btn)
         preview_images_row.add_child(col)
 
@@ -919,7 +920,7 @@ func _on_workflow_selected(index, type_key):
 
 func _on_loras_loaded(lora_list):
     _available_loras = lora_list
-    _available_loras.sort_custom(self, "_sort_by_lowercase")
+    _available_loras.sort_custom(self , "_sort_by_lowercase")
     if lora_list.size() == 0:
         _lora_search.set_placeholder("(no LoRAs found)")
         _lora_search.set_editable(false)
@@ -1012,7 +1013,7 @@ func _rebuild_lora_entries():
         var remove_btn = Button.new()
         remove_btn.set_text("X")
         remove_btn.set_custom_minimum_size(Vector2(32, 32))
-        remove_btn.connect("pressed", self, "_on_remove_lora_pressed", [_current_lora_tab, subkey, i])
+        remove_btn.connect("pressed", self , "_on_remove_lora_pressed", [_current_lora_tab, subkey, i])
         row.add_child(remove_btn)
         _lora_entries_container.add_child(row)
 
