@@ -112,6 +112,8 @@ func build_prompts(character, positive_user_tags, clothing_user_tags, negative_u
     var nude_prompt = ', '.join(nude_positive_tags)
 
     var nude_negative_tags = []
+    if negative_user_tags:
+        nude_negative_tags.append(negative_user_tags)
     nude_negative_tags += race_negative_tags + \
         sex_negative_tags
     if sex == 'futa' and not futa_have_balls():
