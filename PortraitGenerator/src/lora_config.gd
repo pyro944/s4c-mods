@@ -3,6 +3,8 @@ extends Node
 # LoRA configuration and workflow selection data module.
 # Persists to the shared settings file alongside UI settings.
 
+var MOD_PATH = get_script().get_path().get_base_dir() + "/.."
+
 # Maps category name -> character stat key (null = always applied).
 # To add a new category, add an entry here and a matching default in _default_lora_config().
 const CATEGORY_STATS = {
@@ -37,7 +39,18 @@ func _default_lora_config():
 # --- Accessors ---
 
 func get_workflow_name(type_key):
-	return workflow_selections.get(type_key, "default")
+	var workflow_name = workflow_selections.get(type_key, "default")
+	# If the file no longer exists, reset to default
+	if not _workflow_exists(type_key, workflow_name):
+		workflow_selections[type_key] = "default"
+		save_settings()
+		return "default"
+	return workflow_name
+
+func _workflow_exists(type_key, name):
+	var path = MOD_PATH + "/workflows/%s/%s.json" % [type_key, name]
+	var file_access = File.new()
+	return file_access.file_exists(path)
 
 func set_workflow(type_key, name):
 	workflow_selections[type_key] = name
