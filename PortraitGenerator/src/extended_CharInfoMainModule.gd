@@ -41,6 +41,7 @@ var preview_popup = null
 var preview_close_btn = null
 var preview_images_row = null
 var _generated_textures = []
+var _preview_save_type_selectors = {}
 var _source_texture = null
 var preview_title_label = null
 
@@ -597,6 +598,41 @@ func _get_save_category():
             return comfyui_client.SaveCategory.PORTRAIT
     return comfyui_client.SaveCategory.CLOTHED_BODY
 
+func _get_available_save_categories():
+    return [
+        ["Portrait", comfyui_client.SaveCategory.PORTRAIT],
+        ["Clothed Body", comfyui_client.SaveCategory.CLOTHED_BODY],
+        ["Nude Body", comfyui_client.SaveCategory.NUDE_BODY],
+        ["Pregnant Clothed Body", comfyui_client.SaveCategory.PREGNANT_CLOTHED],
+        ["Pregnant Nude Body", comfyui_client.SaveCategory.PREGNANT_NUDE],
+    ]
+
+func _populate_save_type_dropdown(dropdown, default_category):
+    dropdown.clear()
+    var categories = _get_available_save_categories()
+    var selected_index = 0
+    for i in range(categories.size()):
+        var item = categories[i]
+        dropdown.add_item(item[0])
+        dropdown.set_item_metadata(i, item[1])
+        if item[1] == default_category:
+            selected_index = i
+    dropdown.select(selected_index)
+
+func _resolve_selected_save_category(image_index):
+    var default_category = _get_save_category()
+    if _generated_textures.size() <= 1:
+        return default_category
+    if not _preview_save_type_selectors.has(image_index):
+        return default_category
+    var selector = _preview_save_type_selectors[image_index]
+    if selector == null or not is_instance_valid(selector):
+        return default_category
+    var selected_idx = selector.get_selected()
+    if selected_idx < 0:
+        return default_category
+    return selector.get_item_metadata(selected_idx)
+
 # --- ComfyUI Signal Handlers ---
 
 func _on_connect_pressed():
@@ -668,18 +704,23 @@ func _on_images_ready(textures):
     _generated_textures = textures
     status_label.set_text("Status: %d image(s) ready" % textures.size())
     _update_button_states()
-    _rebuild_preview_images(textures)
-    preview_popup.popup()
+    var popup_size = _rebuild_preview_images(textures)
+    preview_popup.popup_centered(popup_size)
 
 func _rebuild_preview_images(textures):
-    var MAX_POPUP_W = 1100
+    var view_size = get_viewport_rect().size
+    var SCREEN_MARGIN = 20
+    var MAX_POPUP_W = min(1100, int(view_size.x) - SCREEN_MARGIN)
     var GAP = 8
     var MARGIN = 20
-    var CTRL_H = 160
+    var CTRL_H_SINGLE = 160
+    var CTRL_H_MULTI = 200
 
     var gen_count = min(textures.size(), 5)
+    var is_multi_output = textures.size() > 1
     var has_source = _source_texture != null
     var total_count = gen_count + (1 if has_source else 0)
+    var controls_height = CTRL_H_MULTI if is_multi_output else CTRL_H_SINGLE
 
     if has_source:
         preview_title_label.set_text("Original → Generated")
@@ -687,11 +728,18 @@ func _rebuild_preview_images(textures):
         preview_title_label.set_text("Generated Image")
 
     var max_image_w = int((MAX_POPUP_W - MARGIN - (total_count - 1) * GAP) / total_count)
+    var max_image_h = int(view_size.y) - controls_height - SCREEN_MARGIN
     var IMAGE_W = min(max_image_w, int(600.0 * 768.0 / 1088.0))
     var IMAGE_H = int(IMAGE_W * 1088.0 / 768.0)
 
+    if IMAGE_H > max_image_h:
+        IMAGE_H = max(120, max_image_h)
+        IMAGE_W = int(IMAGE_H * 768.0 / 1088.0)
+
     var popup_w = total_count * IMAGE_W + (total_count - 1) * GAP + MARGIN
-    var popup_h = IMAGE_H + CTRL_H
+    var popup_h = IMAGE_H + controls_height
+
+    popup_h = min(popup_h, int(view_size.y) - SCREEN_MARGIN)
 
     preview_popup.set_size(Vector2(popup_w, popup_h))
 
@@ -699,6 +747,7 @@ func _rebuild_preview_images(textures):
     for child in old_children:
         preview_images_row.remove_child(child)
         child.free()
+    _preview_save_type_selectors.clear()
 
     if has_source:
         var col = VBoxContainer.new()
@@ -723,12 +772,20 @@ func _rebuild_preview_images(textures):
         tex_rect.set_expand(true)
         tex_rect.set_texture(textures[i])
         col.add_child(tex_rect)
+        if is_multi_output:
+            var save_type_dropdown = OptionButton.new()
+            save_type_dropdown.set_custom_minimum_size(Vector2(IMAGE_W, 0))
+            _populate_save_type_dropdown(save_type_dropdown, _get_save_category())
+            _preview_save_type_selectors[i] = save_type_dropdown
+            col.add_child(save_type_dropdown)
         var save_btn = Button.new()
         save_btn.set_text("Save")
         save_btn.set_custom_minimum_size(Vector2(IMAGE_W, 0))
         save_btn.connect("pressed", self , "_on_save_image_pressed", [i])
         col.add_child(save_btn)
         preview_images_row.add_child(col)
+
+    return Vector2(popup_w, popup_h)
 
 func _on_comfyui_progress_update(progress, max_progress):
     status_label.set_text("Status: Generating... (step %d/%d)" % [progress, max_progress])
@@ -863,7 +920,7 @@ func _on_save_image_pressed(image_index):
     if image_index >= _generated_textures.size() or person == null or comfyui_client == null:
         return
     var texture = _generated_textures[image_index]
-    var category = _get_save_category()
+    var category = _resolve_selected_save_category(image_index)
     var saved_path = comfyui_client.save_image(texture, person.id, person.get_full_name(), category)
     if saved_path == "":
         return
@@ -896,6 +953,7 @@ func _load_texture_from_path(path):
 func _on_settings_pressed():
     _refresh_workflow_dropdowns()
     settings_popup.popup_centered()
+    _on_lora_tab_pressed("global")
 
 func _refresh_workflow_dropdowns():
     if comfyui_client == null:
@@ -919,7 +977,7 @@ func _on_workflow_selected(index, type_key):
         return
     var dd = _workflow_dropdowns[type_key]
     var name = dd.get_item_metadata(index)
-    dd.set_text(name)
+    dd.set_text(_truncate(name, 18))
     lora_config.set_workflow(type_key, name)
 
 # --- LoRA Management ---
