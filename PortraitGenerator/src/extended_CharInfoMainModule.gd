@@ -791,7 +791,8 @@ func _on_comfyui_progress_update(progress, max_progress):
     status_label.set_text("Status: Generating... (step %d/%d)" % [progress, max_progress])
 
 func _on_comfyui_error(message):
-    status_label.set_text("Error: " + str(message))
+    status_label.set_text("ComfyUI error: Press F2 or see log for details")
+    print("ComfyUI Error: %s" % str(message))
     _update_button_states()
     comfyui_connect_button.set_disabled(false)
 

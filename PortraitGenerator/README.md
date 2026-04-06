@@ -171,6 +171,10 @@ ComfyUI has a fairly new security scheme that seems to sometimes interfere with 
 2. Change `security_level` to `weak`.
 3. Change `network_mode` to `personal_cloud`.
 
+### I'm seeing an error that looks like "[Errno 22] Invalid argument
+
+This usually indicates a problem with ComfyUI's configuration. As discussed in [this issue](https://github.com/Comfy-Org/ComfyUI/issues/6178), try changing the port that ComfyUI is using (in the Server-Config settings).
+
 ## Acknowledgements
 
 - Special thanks to **Zeep** on Discord for helping me get to know ComfyUI and for tons of advice on workflows.
