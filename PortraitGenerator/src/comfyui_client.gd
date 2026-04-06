@@ -252,7 +252,7 @@ func _handle_ws_message(text):
             if state == State.GENERATING:
                 state = State.CONNECTED
                 var data = msg.get("data", {})
-                emit_signal("error", "ComfyUI execution error: %s" % str(data.get("exception_message", "Unknown error")))
+                emit_signal("error", "ComfyUI execution error: %s" % JSON.print(data))
 
 # --- Result Fetching ---
 
