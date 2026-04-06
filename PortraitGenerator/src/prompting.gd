@@ -5,6 +5,7 @@ var items
 var _alpha_regex = null
 
 var CLOTHED_TAGS = ['fully clothed']
+var PORTRAIT_TAGS = ['portrait']
 
 # Slot iteration order for equipment prompt generation.
 # ass, crotch, underwear are at the end and conditionally skipped when legs are equipped.
@@ -78,8 +79,8 @@ func build_prompts(character, positive_user_tags, clothing_user_tags, negative_u
         tail_tags(tail, tail_color) + \
         horns_tags(horns, horns_color) + \
         ears_tags(ears)
-        
-    var positive_face_tags = subject_tags(sex, race_descriptor) + \
+    
+    var face_tags = subject_tags(sex, race_descriptor) + \
         age_tags(age, sex) + \
         hair_tags(hair_color, hair_length, hair_style, beard, facial_hair_color) + \
         skin_tags(skin_color, skin_type, skin_coverage) + \
@@ -121,15 +122,18 @@ func build_prompts(character, positive_user_tags, clothing_user_tags, negative_u
     var nude_negative_prompt = ', '.join(nude_negative_tags)
     var nude_positive_prompt = ', '.join(nude_positive_tags)
     
-    var face_positive_prompt = ', '.join(positive_face_tags)
+    var face_positive_tags = []
+    if positive_user_tags:
+        face_positive_tags.append(positive_user_tags)
+    face_positive_tags += PORTRAIT_TAGS + face_tags
+    var face_positive_prompt = ', '.join(face_positive_tags)
 
-    var negative_face_tags = []
+    var face_negative_tags = []
     if negative_user_tags:
-        negative_face_tags.append(negative_user_tags)
-    negative_face_tags += negative_face_tags + \
-        race_negative_tags + \
+        face_negative_tags.append(negative_user_tags)
+    face_negative_tags += race_negative_tags + \
         sex_negative_tags
-    var face_negative_prompt = ', '.join(negative_face_tags)
+    var face_negative_prompt = ', '.join(face_negative_tags)
     
     return {
         'clothed_positive': positive_prompt,

@@ -911,7 +911,8 @@ func _on_upload_complete(uploaded_filename):
         comfyui_client.generate_img2img(person.get_full_name(), model, pos, neg, uploaded_filename, _get_gen_denoise(), -1, _get_gen_steps(), _get_gen_cfg(), wf_name, loras)
 
 func _on_upload_error(message):
-    status_label.set_text("Upload error: " + str(message))
+    status_label.set_text("Upload error. Press F2 or see log for details.")
+    print("ComfyUI Upload Error: %s" % str(message))
     _update_button_states()
 
 # --- Save Handler ---

@@ -212,7 +212,7 @@ func _on_prompt_response(result, response_code, _headers, body):
     if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
         var detail = ""
         if body.size() > 0:
-            detail = body.get_string_from_utf8().substr(0, 200)
+            detail = body.get_string_from_utf8()
         state = State.CONNECTED
         emit_signal("error", "ComfyUI rejected prompt (HTTP %d): %s" % [response_code, detail])
         return
@@ -399,7 +399,7 @@ func upload_image(image_path):
 
 func _on_upload_response(result, response_code, _headers, body):
     if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
-        emit_signal("upload_error", "Upload failed (HTTP %d)" % response_code)
+        emit_signal("upload_error", "Upload failed (HTTP %d): %s" % response_code, body.get_string_from_utf8())
         return
     var json = JSON.parse(body.get_string_from_utf8())
     if json.error != OK:
