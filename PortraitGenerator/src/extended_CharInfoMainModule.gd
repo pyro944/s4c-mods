@@ -792,6 +792,7 @@ func _on_comfyui_progress_update(progress, max_progress):
 
 func _on_comfyui_error(message):
     status_label.set_text("Error: " + str(message))
+    print("ComfyUI error: " + str(message))
     _update_button_states()
     comfyui_connect_button.set_disabled(false)
 

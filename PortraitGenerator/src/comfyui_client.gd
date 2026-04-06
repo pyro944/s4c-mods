@@ -203,6 +203,7 @@ func _submit_workflow(workflow):
     })
     var url = comfyui_url + "/prompt"
     var headers = ["Content-Type: application/json"]
+    print("Payload: " + payload)
     var err = _http_prompt.request(url, headers, false, HTTPClient.METHOD_POST, payload)
     if err != OK:
         state = State.CONNECTED
