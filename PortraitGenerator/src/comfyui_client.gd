@@ -466,7 +466,7 @@ func _populate_static_nodes(workflow, image_prefix, checkpoint):
     for node_id in workflow.keys():
         var node = workflow[node_id]
         if node.get("class_type", "") == "SaveImage":
-            node["inputs"]["filename_prefix"] = image_prefix
+            node["inputs"]["filename_prefix"] = _sanitize_file_name(image_prefix)
         if node.get("class_type", "") == "CheckpointLoaderSimple":
             node["inputs"]["ckpt_name"] = checkpoint
     return workflow
