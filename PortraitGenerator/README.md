@@ -41,12 +41,29 @@ I don't have advice for system requirements. Instead, you should refer to the [C
 6. Search for and install these nodes:
    - `ComfyUI_FaceAnalysis`
    - `rgthree-comfy`
+   - `ComfyUI Impact Pack`
+   - `ComfyUI Impact Subpack`
 7. Close the node manager.
-8. Restart ComfyUI.
+8. Click "Model manager".
+9. Search for and install these models:
+   - `face_yolov8m (bbox)`
+10. Close the model manager.
+11. Restart ComfyUI.
 
 Finally, you'll need at least one checkpoint model. When you first open ComfyUI, it will have some helpful suggestions to get you started.
 
 See the [ComfyUI documentation](https://docs.comfy.org/get_started/first_generation#3-model-installation) for more information about installing models.
+
+### Workflow Dependencies
+
+These are the models and node packs that each workflow requires:
+
+| Workflow                    | Node Packs                                  | Models                           |
+| --------------------------- | ------------------------------------------- | -------------------------------- |
+| txt2img/default             | rgthree-comfy                               | None                             |
+| img2img/default             | rgthree-comfy                               | None                             |
+| portrait/default            | ComfyUI_FaceAnalysis                        | At least one `insightface` model |
+| portrait/ultralytics-simple | ComfyUI Impact Pack, ComfyUI Impact Subpack | `face_yolov8m (bbox)`            |
 
 ## Usage
 
@@ -62,6 +79,7 @@ See the [ComfyUI documentation](https://docs.comfy.org/get_started/first_generat
    - Clothing: Click the button to load the character's current equipment!
    - Negative prompt: `deformed hands`
 5. Click the "Generate" button to produce prompts based on the character's stats.
+   - You can modify any of the generated prompts as you see fit.
 6. Click any of the save icons next to the prompts to copy the corresponding prompt to your clipboard.
 
 ### ComfyUI integration
@@ -150,9 +168,13 @@ ComfyUI has a fairly new security scheme that seems to sometimes interfere with 
 2. Change `security_level` to `weak`.
 3. Change `network_mode` to `personal_cloud`.
 
-### I'm seeing an error that looks like "[Errno 22] Invalid argument
+### I'm seeing an error that looks like "[Errno 22] Invalid argument" or ComfyUI isn't returning images to Strive.
 
 This usually indicates a problem with ComfyUI's configuration. As discussed in [this issue](https://github.com/Comfy-Org/ComfyUI/issues/6178), try changing the port that ComfyUI is using (in the Server-Config settings).
+
+### The default portrait workflow isn't working
+
+Try using `ultralytics-simple`. It does the same job but uses a different set of node packs. Refer to the Workflow Dependencies section above to ensure you have all the dependencies installed.
 
 ## Acknowledgements
 
