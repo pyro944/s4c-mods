@@ -92,25 +92,7 @@ Feel free to edit the prompts as you see fit. The game will not overwrite them u
 
 #### Workflows
 
-You can import your own workflows if you're comfortable working with ComfyUI. The mod expects a few specific nodes to be present:
-
-All workflows:
-
-- At least one `SaveImage` node to output your generated image.
-
-For txt2img workflows:
-
-- A `StringPrimitive` node titled `positive_prompt`.
-- A `StringPrimitive` node titled `negative_prompt`.
-- An `IntPrimitive` node titled `steps`.
-- An `IntPrimitive` node titled `seed`.
-- An `IntPrimitive` node titled `width`.
-- An `IntPrimitive` node titled `height`.
-- A `FloatPrimitive` node titled `cfg_scale`.
-- A `Power Lora Loader (rgthree)` node for loading LoRAs.
-- A `LoadCheckpoint` node that loads your checkpoint.
-
-For img2img workflows:
+You can import your own workflows if you're comfortable working with ComfyUI. The mod will populate the following nodes if they are present:
 
 - A `StringPrimitive` node titled `positive_prompt`.
 - A `StringPrimitive` node titled `negative_prompt`.
@@ -122,9 +104,7 @@ For img2img workflows:
 - A `Power Lora Loader (rgthree)` node for loading LoRAs.
 - A `LoadCheckpoint` node that loads your checkpoint.
 
-For portrait workflows:
-
-- A `LoadImage` node titled `source_image` that loads the source image.
+You will also need at least at least one `SaveImage` node to output your generated image.
 
 To import your workflow into the mod, open it in ComfyUI, go to File > Export (API), and then save it into `<mod root>/workflows/<workflow type>`. For example, save a new txt2img workflow to `<mod root>/workflows/txt2img/my-fancy-workflow.json`.
 
@@ -140,7 +120,6 @@ LoRA settings are in the "Workflow settings..." panel.
 
 - The current release is pretty rough around the edges. You will find bugs. Please report them here.
 - If you close the image preview without saving, the mod _will not_ remember that image. If you want to get it back, go find it in the ComfyUI app, which should still have it saved.
-- If your workflow generates multiple images, the UI will display them, but you'll only be able to save them to one portrait type.
 
 ## Troubleshooting
 
