@@ -53,3 +53,8 @@
 - Support workflows that return multiple images.
 - Better debugging output for error cases.
 - Various small fixes.
+
+1.1.4
+- Add Ultralytics portrait workflow for those who are having trouble with the default.
+- The new workflow requires new dependencies. See the Workflow Dependencies section of the README for details.
+- Add another safeguard for filenames which may contain forbidden characters.
