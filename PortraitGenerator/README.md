@@ -27,6 +27,7 @@ To generate portraits in-game, you'll need ComfyUI and sufficient hardware to ha
 I don't have advice for system requirements. Instead, you should refer to the [ComfyUI documentation](https://docs.comfy.org/installation/system_requirements).
 
 1. Install ComfyUI using whatever method you prefer. I recommend the [desktop installation](https://docs.comfy.org/installation/desktop/windows) because it comes packaged with all the configuration and tools we'll need.
+   - You need ComfyUI `0.16.4` or newer.
 2. Launch ComfyUI.
 3. Adjust and verify some settings.
    1. Click the Settings button in the bottom left of the screen.
@@ -58,12 +59,13 @@ See the [ComfyUI documentation](https://docs.comfy.org/get_started/first_generat
 
 These are the models and node packs that each workflow requires:
 
-| Workflow                    | Node Packs                                  | Models                           |
-| --------------------------- | ------------------------------------------- | -------------------------------- |
-| txt2img/default             | rgthree-comfy                               | None                             |
-| img2img/default             | rgthree-comfy                               | None                             |
-| portrait/default            | ComfyUI_FaceAnalysis                        | At least one `insightface` model |
-| portrait/ultralytics-simple | ComfyUI Impact Pack, ComfyUI Impact Subpack | `face_yolov8m (bbox)`            |
+| Workflow                    | Node Packs                                                 | Models                           | Description                                                                                   |
+| --------------------------- | ---------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------- |
+| txt2img/default             | rgthree-comfy                                              | None                             | Create an image based on text prompts. `denoise` is ignored.                                  |
+| img2img/default             | rgthree-comfy                                              | None                             | Create an image based on an existing image and a text prompt.                                 |
+| img2img/preserve-face       | rgthree-comfy, ComfyUI Impact Pack, ComfyUI Impact Subpack | `face_yolov8m (bbox)`            | Create an image based on an existing image and a text prompt, but preserve the original face. |
+| portrait/default            | ComfyUI_FaceAnalysis                                       | At least one `insightface` model | Create a square crop around the subject's face.                                               |
+| portrait/ultralytics-simple | ComfyUI Impact Pack, ComfyUI Impact Subpack                | `face_yolov8m (bbox)`            | Create a square crop around the subject's face.                                               |
 
 ## Usage
 
