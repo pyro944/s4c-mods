@@ -131,12 +131,38 @@ func sync_position():
         _text_edit.rect_global_position = get_global_rect().position
 
 func _calc_height(width):
-    var font = _text_edit.get_font("font", "")
-    var txt = _text_edit.text
-    if font == null or txt.empty():
+    if _text_edit == null:
         return default_height
-    var usable_w = max(1.0, width - 20.0)
-    var text_w = font.get_string_size(txt).x
-    var line_h = font.get_height() + 6
-    var visual_lines = max(1, int(ceil(text_w / usable_w)))
-    return int(visual_lines * line_h) + 16
+
+    var logical_lines = _text_edit.get_line_count()
+    if logical_lines <= 0:
+        return default_height
+
+    var line_height = _get_text_line_height()
+    var total_visual_lines = 0
+
+    for i in range(logical_lines):
+        # One visual line minimum per logical line, plus wrapped fragments.
+        total_visual_lines += 1
+        if _text_edit.has_method("get_line_wrap_count"):
+            total_visual_lines += int(_text_edit.get_line_wrap_count(i))
+
+    var content_padding = _get_vertical_content_padding()
+    var height = int(ceil(total_visual_lines * line_height + content_padding))
+    return max(default_height, height)
+
+func _get_text_line_height():
+    if _text_edit != null and _text_edit.has_method("get_line_height"):
+        return float(_text_edit.get_line_height())
+    var font = _text_edit.get_font("font", "")
+    if font == null:
+        return 18.0
+    return float(font.get_height())
+
+func _get_vertical_content_padding():
+    if _text_edit == null:
+        return 16.0
+    var style = _text_edit.get_stylebox("normal", "TextEdit")
+    if style == null:
+        return 16.0
+    return float(style.get_margin(MARGIN_TOP) + style.get_margin(MARGIN_BOTTOM))
