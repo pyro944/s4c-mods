@@ -62,6 +62,8 @@ var btn_generate_nude_pregnant = null
 var btn_nude_pregnant_from_nude = null
 var btn_portrait_from_body = null
 var btn_portrait_from_nude = null
+var btn_fetch_last = null
+var _has_attempted_generation = false
 
 # Tracks which button was pressed so the preview popup knows the save category
 var _current_generation_type = -1
@@ -262,6 +264,10 @@ func _setup_prompt_panel():
     btn_portrait_from_body.connect("pressed", self , "_on_gen_portrait_from_body")
     btn_portrait_from_nude = right_col.get_node("PortraitRow/PortraitFromNudeBtn")
     btn_portrait_from_nude.connect("pressed", self , "_on_gen_portrait_from_nude")
+
+    btn_fetch_last = right_col.get_node("FetchLastBtn")
+    btn_fetch_last.connect("pressed", self , "_on_fetch_last_pressed")
+    btn_fetch_last.set_disabled(true)
 
     return popup
 
@@ -521,6 +527,12 @@ func _update_button_states():
 
     btn_portrait_from_body.set_disabled(not (can_generate and has_body))
     btn_portrait_from_nude.set_disabled(not (can_generate and has_nude))
+    _update_fetch_last_button_state()
+
+func _update_fetch_last_button_state():
+    if btn_fetch_last == null:
+        return
+    btn_fetch_last.set_disabled(not _has_attempted_generation)
 
 func _update_page():
 	gui_controller.slavepanel.BodyModule.update()
@@ -811,6 +823,8 @@ func _init_txt2img_config():
 func _do_txt2img(gen_type):
     if comfyui_client == null or active_person == null:
         return
+    _has_attempted_generation = true
+    _update_fetch_last_button_state()
     if not _txt2img_config:
         _init_txt2img_config()
     var config = _txt2img_config[gen_type]
@@ -847,6 +861,8 @@ func _on_gen_nude_pregnant():
 func _do_upload_gen(gen_type, use_nude_path, show_source_in_preview, status_text):
     if comfyui_client == null or active_person == null:
         return
+    _has_attempted_generation = true
+    _update_fetch_last_button_state()
     _save_ui_settings()
     _current_generation_type = gen_type
     _generation_person = active_person
@@ -914,6 +930,12 @@ func _on_upload_error(message):
     status_label.set_text("Upload error. Press F2 or see log for details.")
     print("ComfyUI Upload Error: %s" % str(message))
     _update_button_states()
+
+func _on_fetch_last_pressed():
+    if comfyui_client == null:
+        return
+    status_label.set_text("Status: Fetching last result...")
+    comfyui_client.fetch_last_workflow()
 
 # --- Save Handler ---
 

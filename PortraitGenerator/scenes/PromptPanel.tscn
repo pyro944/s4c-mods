@@ -235,3 +235,9 @@ size_flags_horizontal = 3
 rect_min_size = Vector2( 0, 36 )
 disabled = true
 text = "Portrait from nude"
+
+[node name="FetchLastBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "Fetch last"

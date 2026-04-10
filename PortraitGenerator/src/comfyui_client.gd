@@ -238,22 +238,25 @@ func _handle_ws_message(text):
     var msg_type = msg.get("type", "")
 
     match msg_type:
-        "executing":
+        "execution_success":
             var data = msg.get("data", {})
-            var node = data.get("node", "")
             var prompt_id = str(data.get("prompt_id", ""))
-            if (node == null or node == "") and prompt_id == current_prompt_id:
+            if prompt_id == current_prompt_id:
                 _fetch_history(current_prompt_id)
         "progress":
             var data = msg.get("data", {})
             emit_signal("progress_update", data.get("value", 0), data.get("max", 0))
-        "execution_error":
+        "execution_error", "execution_interrupted":
             if state == State.GENERATING:
                 state = State.CONNECTED
                 var data = msg.get("data", {})
                 emit_signal("error", "ComfyUI execution error: %s" % JSON.print(data))
 
 # --- Result Fetching ---
+
+func fetch_last_workflow():
+    if current_prompt_id != "":
+        _fetch_history(current_prompt_id)
 
 func _fetch_history(prompt_id):
     state = State.FETCHING_RESULT
