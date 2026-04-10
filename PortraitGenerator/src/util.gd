@@ -22,20 +22,20 @@ const SETTINGS_PATH = "user://portrait_generator_settings.json"
 
 # Read and parse the settings file. Returns an empty dict if file doesn't exist or is invalid.
 func read_settings():
-	var file = File.new()
-	if not file.file_exists(SETTINGS_PATH):
-		return {}
-	if file.open(SETTINGS_PATH, File.READ) != OK:
-		return {}
-	var json = JSON.parse(file.get_as_text())
-	file.close()
-	if json.error != OK:
-		return {}
-	return json.result if json.result is Dictionary else {}
+    var file = File.new()
+    if not file.file_exists(SETTINGS_PATH):
+        return {}
+    if file.open(SETTINGS_PATH, File.READ) != OK:
+        return {}
+    var json = JSON.parse(file.get_as_text())
+    file.close()
+    if json.error != OK:
+        return {}
+    return json.result if json.result is Dictionary else {}
 
 # Write settings data to the file.
 func save_settings(data):
-	var file = File.new()
-	if file.open(SETTINGS_PATH, File.WRITE) == OK:
-		file.store_string(JSON.print(data))
-		file.close()
+    var file = File.new()
+    if file.open(SETTINGS_PATH, File.WRITE) == OK:
+        file.store_string(JSON.print(data))
+        file.close()
