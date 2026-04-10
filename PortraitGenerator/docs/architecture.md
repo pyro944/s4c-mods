@@ -221,6 +221,7 @@ z-ordering workaround. On unfocus, it returns to its placeholder. Newlines are s
 so it behaves like a single-line input with word-wrap on focus.
 
 API:
+
 - `setup(mod_path, min_size)` — loads styles, connects internal signals
 - `popup_root` — must be set by the parent before focus can expand
 - `text` (setget) — read/write the TextEdit content
@@ -235,6 +236,7 @@ A searchable dropdown popup backed by an ItemList. Shows up to 50 matches with a
 click-through.
 
 API:
+
 - `setup(mod_path)` — loads panel style, connects internal signals
 - `set_items(items)` — set the full list of searchable items
 - `filter(query, anchor_control)` — filter and optionally show below a control
@@ -594,6 +596,7 @@ user://portrait_generator_settings.json
 ```
 
 **File IO is centralized in `util.gd`:**
+
 - `read_settings()` — Reads and parses the settings file, returns an empty dict on error
 - `save_settings(data)` — Writes the data dict to the settings file
 
@@ -680,7 +683,7 @@ containers without being higher in the scene tree.
 
 The TextEdit also suppresses newlines (Enter key), making it behave like a single-line
 `LineEdit` while supporting word-wrap for long prompts. Height is dynamically calculated
-based on text content width.
+based on text content.
 
 The main script tracks all ExpandingInput instances in `_expanding_inputs` and calls
 `return_to_placeholder()` on each when the popup hides, ensuring clean state on reopen.

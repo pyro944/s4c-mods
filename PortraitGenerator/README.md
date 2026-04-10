@@ -139,7 +139,6 @@ LoRA settings are in the "Workflow settings..." panel.
 ## Known limitations
 
 - The current release is pretty rough around the edges. You will find bugs. Please report them here.
-- If you close the image preview without saving, the mod _will not_ remember that image. If you want to get it back, go find it in the ComfyUI app, which should still have it saved.
 
 ## Troubleshooting
 
@@ -174,9 +173,14 @@ ComfyUI has a fairly new security scheme that seems to sometimes interfere with 
 
 This usually indicates a problem with ComfyUI's configuration. As discussed in [this issue](https://github.com/Comfy-Org/ComfyUI/issues/6178), try changing the port that ComfyUI is using (in the Server-Config settings).
 
-### The default portrait workflow isn't working
+### The default portrait workflow isn't working.
 
 Try using `ultralytics-simple`. It does the same job but uses a different set of node packs. Refer to the Workflow Dependencies section above to ensure you have all the dependencies installed.
+
+### ComfyUI generated an image, but it's not showing up in-game.
+
+Comfy sometimes doesn't seem to report all the information we need. As a fail-safe, there is a button labeled
+"Fetch last" that will try to get the result of the last-executed prompt. Try using that to import your images into the game.
 
 ## Acknowledgements
 
