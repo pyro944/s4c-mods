@@ -4,8 +4,7 @@ extends Control
 #
 # When focused, the TextEdit reparents to `popup_root` so it renders above all other
 # controls (a Godot 3.5 z-ordering workaround). When unfocused, it returns to this
-# placeholder. Newlines are stripped so it behaves like a single-line input with
-# word-wrap on focus.
+# placeholder.
 #
 # Setup (by the parent script):
 #   input.popup_root = some_popup_node
@@ -36,13 +35,14 @@ func get_text():
 	return ""
 
 func setup(mod_path, min_size = Vector2(550, 50)):
-    _text_edit = $TextEdit
-    rect_min_size = min_size
-    default_height = int(min_size.y)
-    _load_styles(mod_path)
-    _text_edit.connect("focus_entered", self , "_on_focus_entered")
-    _text_edit.connect("focus_exited", self , "_on_focus_exited")
-    _text_edit.connect("text_changed", self , "_on_text_changed")
+	_text_edit = $TextEdit
+	rect_min_size = min_size
+	default_height = int(min_size.y)
+	_load_styles(mod_path)
+	_text_edit.connect("focus_entered", self , "_on_focus_entered")
+	_text_edit.connect("focus_exited", self , "_on_focus_exited")
+	_text_edit.connect("text_changed", self , "_on_text_changed")
+	_text_edit.connect("gui_input", self , "_on_text_edit_gui_input")
 
 func _load_styles(mod_path):
 	var style_dir = mod_path + "/resources/styles"
@@ -96,15 +96,23 @@ func _on_focus_exited():
 	_text_edit.set_anchors_and_margins_preset(Control.PRESET_WIDE)
 
 func _on_text_changed():
-	# Strip newlines so it behaves like a single-line input.
-	if "\n" in _text_edit.text:
-		_text_edit.text = _text_edit.text.replace("\n", "")
-		_text_edit.cursor_set_line(0)
-		_text_edit.cursor_set_column(_text_edit.text.length())
-		return # The assignment above re-fires text_changed; expand happens on that pass
 	if _text_edit.has_focus():
 		call_deferred("_apply_expanded_state")
 	emit_signal("text_changed")
+
+func _on_text_edit_gui_input(event):
+	if not (event is InputEventKey):
+		return
+	if not event.pressed or event.echo:
+		return
+	if event.scancode != KEY_TAB:
+		return
+
+	# Keep tab for focus traversal instead of inserting tab characters.
+	_text_edit.accept_event()
+	var target = find_prev_valid_focus() if event.shift else find_next_valid_focus()
+	if target != null:
+		target.grab_focus()
 
 # --- Public helpers ---
 
