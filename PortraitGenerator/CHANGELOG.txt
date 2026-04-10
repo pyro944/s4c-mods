@@ -58,3 +58,8 @@
 - Add Ultralytics portrait workflow for those who are having trouble with the default.
 - The new workflow requires new dependencies. See the Workflow Dependencies section of the README for details.
 - Add another safeguard for filenames which may contain forbidden characters.
+
+1.1.5
+- Add img2img workflow that tries to maintain the character's face (`preserve-face`).
+- Fix various behavior issues with the expandable prompt inputs.
+- Add a "Fetch last" button to the UI to help when ComfyUI doesn't return images properly.
