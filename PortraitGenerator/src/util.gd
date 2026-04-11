@@ -4,6 +4,7 @@ extends Node
 
 enum _GenerationType {
     BODY,
+    BODY_FROM_NUDE,
     NUDE,
     NUDE_FROM_BODY,
     PREGNANT,

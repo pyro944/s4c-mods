@@ -55,6 +55,7 @@ var height_input = null
 # Generation buttons
 var btn_generate_body = null
 var btn_generate_nude = null
+var btn_body_from_nude = null
 var btn_nude_from_body = null
 var btn_generate_pregnant = null
 var btn_pregnant_from_body = null
@@ -242,8 +243,10 @@ func _setup_prompt_panel():
 
     right_col.get_node("SettingsBtn").connect("pressed", self , "_on_settings_pressed")
 
-    btn_generate_body = right_col.get_node("GenBodyBtn")
+    btn_generate_body = right_col.get_node("GenBodyRow/GenBodyBtn")
     btn_generate_body.connect("pressed", self , "_on_gen_body")
+    btn_body_from_nude = right_col.get_node("GenBodyRow/BodyFromNudeBtn")
+    btn_body_from_nude.connect("pressed", self , "_on_gen_body_from_nude")
 
     btn_generate_nude = right_col.get_node("NudeRow/GenNudeBtn")
     btn_generate_nude.connect("pressed", self , "_on_gen_nude")
@@ -498,7 +501,7 @@ func _has_nude_image():
     return file.file_exists(nude_path)
 
 func _get_all_gen_buttons():
-    return [btn_generate_body, btn_generate_nude, btn_nude_from_body,
+    return [btn_generate_body, btn_body_from_nude, btn_generate_nude, btn_nude_from_body,
             btn_generate_pregnant, btn_pregnant_from_body,
             btn_generate_nude_pregnant, btn_nude_pregnant_from_nude,
             btn_portrait_from_body, btn_portrait_from_nude]
@@ -524,6 +527,7 @@ func _update_button_states():
     btn_pregnant_from_body.set_disabled(not (can_generate and has_body))
 
     btn_nude_pregnant_from_nude.set_disabled(not (can_generate and has_nude))
+    btn_body_from_nude.set_disabled(not (can_generate and has_nude))
 
     btn_portrait_from_body.set_disabled(not (can_generate and has_body))
     btn_portrait_from_nude.set_disabled(not (can_generate and has_nude))
@@ -598,7 +602,7 @@ func _get_selected_model():
 
 func _get_save_category():
     match _current_generation_type:
-        GenerationType.BODY:
+        GenerationType.BODY, GenerationType.BODY_FROM_NUDE:
             return comfyui_client.SaveCategory.CLOTHED_BODY
         GenerationType.NUDE, GenerationType.NUDE_FROM_BODY:
             return comfyui_client.SaveCategory.NUDE_BODY
@@ -874,6 +878,9 @@ func _do_upload_gen(gen_type, use_nude_path, show_source_in_preview, status_text
     _disable_all_gen_buttons()
     comfyui_client.upload_image(source_path)
 
+func _on_gen_body_from_nude():
+    _do_upload_gen(GenerationType.BODY_FROM_NUDE, true, true, "nude image")
+
 func _on_gen_nude_from_body():
     _do_upload_gen(GenerationType.NUDE_FROM_BODY, false, true, "body image")
 
@@ -899,6 +906,9 @@ func _on_upload_complete(uploaded_filename):
     var pos = ""
     var neg = ""
     match _current_generation_type:
+        GenerationType.BODY_FROM_NUDE:
+            pos = clothed_prompt_output.text
+            neg = clothed_negative_prompt_output.text
         GenerationType.NUDE_FROM_BODY:
             pos = nude_prompt_output.text
             neg = nude_negative_prompt_output.text
@@ -1133,6 +1143,7 @@ var _gen_handlers = {}
 func _init_gen_handlers():
     _gen_handlers = {
         GenerationType.BODY: "_on_gen_body",
+        GenerationType.BODY_FROM_NUDE: "_on_gen_body_from_nude",
         GenerationType.NUDE: "_on_gen_nude",
         GenerationType.NUDE_FROM_BODY: "_on_gen_nude_from_body",
         GenerationType.PREGNANT: "_on_gen_pregnant",
