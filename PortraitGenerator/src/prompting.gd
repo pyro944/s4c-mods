@@ -169,7 +169,7 @@ func skin_tags(skin_color, skin_type, skin_coverage):
         # Overwrite skin color with fur/scales color
         skin = skin_coverage_to_color(skin_color, skin_coverage)
 
-    return ['%s %s' % [to_simple_color(skin), skin_type]]
+    return ['(%s %s:1.2)' % [to_simple_color(skin), skin_type]]
 
 func skin_coverage_to_color(skin_color, skin_coverage):
     var coverage_components = Array(skin_coverage.split("_"))
@@ -178,7 +178,7 @@ func skin_coverage_to_color(skin_color, skin_coverage):
     elif coverage_components.size() > 2:
         return ' and '.join(coverage_components.slice(1, coverage_components.size() - 1))
     # The others (scales, kobold) don't actually affect skin color
-    return to_alpha(skin_color)
+    return to_simple_color(skin_color)
 
 func eye_tags(eye_color, eye_shape):
     var components = ['%s eyes' % eye_color]
@@ -203,13 +203,13 @@ func hair_tags(hair_color, hair_length, hair_style, beard, facial_hair_color):
         }.get(hair_length)
         match hair_style:
             'straight':
-                hair_prompt = '%s %s hair' % [hair_length_prompt, hair_color]
+                hair_prompt = '(%s %s hair:1.2)' % [hair_length_prompt, hair_color]
             'pigtails', 'twinbraids':
-                hair_prompt = '%s %s hair in %s' % [hair_length_prompt, hair_color, hair_style]
+                hair_prompt = '(%s %s hair:1.2) in %s' % [hair_length_prompt, hair_color, hair_style]
             'ponytail', 'bun', 'braid':
-                hair_prompt = '%s %s hair in a %s' % [hair_length_prompt, hair_color, hair_style]
+                hair_prompt = '(%s %s hair:1.2) in a %s' % [hair_length_prompt, hair_color, hair_style]
             _:
-                hair_prompt = '%s %s %s hair' % [hair_length_prompt, hair_color, hair_style]
+                hair_prompt = '(%s %s %s hair:1.2)' % [hair_length_prompt, hair_color, hair_style]
     var components = [hair_prompt]
     if beard != 'no':
         components += facial_hair_tags(beard, to_simple_color(facial_hair_color))
@@ -318,8 +318,8 @@ func to_simple_color(skin_color):
         'human1': 'fair',
         'human2': 'light',
         'human3': 'light brown',
-        'human4': 'brown',
-        'human5': 'dark brown',
+        'human4': 'bronze',
+        'human5': 'chocolate',
         'dark1': 'dark grey',
         'dark2': 'very dark grey',
         'dark3': 'black',
