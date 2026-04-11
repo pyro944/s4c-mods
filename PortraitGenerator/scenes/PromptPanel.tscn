@@ -6,13 +6,13 @@
 [node name="PromptPanel" type="Popup"]
 theme = ExtResource( 1 )
 anchor_left = 0.0
-anchor_top = 0.5
+anchor_top = 1.0
 anchor_right = 0.0
-anchor_bottom = 0.5
+anchor_bottom = 1.0
 margin_left = 20.0
-margin_top = -375.0
+margin_top = -770.0
 margin_right = 1220.0
-margin_bottom = 375.0
+margin_bottom = -20.0
 
 [node name="Panel" type="Panel" parent="."]
 anchor_right = 1.0
@@ -174,11 +174,19 @@ size_flags_horizontal = 3
 rect_min_size = Vector2( 0, 36 )
 text = "Workflow settings..."
 
-[node name="GenBodyBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+[node name="GenBodyRow" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
+
+[node name="GenBodyBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/GenBodyRow"]
 size_flags_horizontal = 3
 rect_min_size = Vector2( 0, 36 )
 disabled = true
 text = "New body"
+
+[node name="BodyFromNudeBtn" type="Button" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn/GenBodyRow"]
+size_flags_horizontal = 3
+rect_min_size = Vector2( 0, 36 )
+disabled = true
+text = "Body from nude"
 
 [node name="NudeRow" type="HBoxContainer" parent="Panel/Margin/Outer/Scroll/Columns/RightColumn"]
 
