@@ -426,6 +426,10 @@ func _refresh_comfyui_status():
 
 func _generate_prompts(force = false):
     _save_ui_settings()
+
+    # Guard against generating prompts for the wrong person if the active person changes while the panel is open
+    active_person = input_handler.interacted_character
+    
     var style = positive_input.text
     var clothing = clothing_input.text
     var negative = negative_input.text
@@ -450,6 +454,7 @@ func _generate_prompts(force = false):
 func _on_from_equipment_pressed():
     if active_person == null:
         return
+    active_person = input_handler.interacted_character
     clothing_input.set_text(modding_core.modules.PortraitGenerator_prompting.build_equipment_prompt(active_person))
 
 func _on_prompt_popup_hide():
@@ -834,7 +839,7 @@ func _do_txt2img(gen_type):
     var config = _txt2img_config[gen_type]
     _save_ui_settings()
     _current_generation_type = gen_type
-    _generation_person = active_person
+    _generation_person = input_handler.interacted_character
     _source_texture = null
     _generate_prompts()
     var model = _get_selected_model()
@@ -845,8 +850,8 @@ func _do_txt2img(gen_type):
     status_label.set_text("Status: Generating %s..." % config[3])
     _disable_all_gen_buttons()
     var wf_name = lora_config.get_workflow_name("txt2img") if lora_config != null else "default"
-    var loras = lora_config.resolve_loras(active_person, gen_type) if lora_config != null else []
-    comfyui_client.generate_image(active_person.get_full_name(), model, pos, neg, -1, _get_gen_width(), _get_gen_height(), _get_gen_steps(), _get_gen_cfg(), wf_name, loras)
+    var loras = lora_config.resolve_loras(_generation_person, gen_type) if lora_config != null else []
+    comfyui_client.generate_image(_generation_person.get_full_name(), model, pos, neg, -1, _get_gen_width(), _get_gen_height(), _get_gen_steps(), _get_gen_cfg(), wf_name, loras)
 
 func _on_gen_body():
     _do_txt2img(GenerationType.BODY)
@@ -869,9 +874,9 @@ func _do_upload_gen(gen_type, use_nude_path, show_source_in_preview, status_text
     _update_fetch_last_button_state()
     _save_ui_settings()
     _current_generation_type = gen_type
-    _generation_person = active_person
+    _generation_person = input_handler.interacted_character
     _generate_prompts()
-    var body_path = active_person.get_stat('body_image')
+    var body_path = _generation_person.get_stat('body_image')
     var source_path = _get_nude_path_from_body(body_path) if use_nude_path else body_path
     _source_texture = _load_texture_from_path(source_path) if show_source_in_preview else null
     status_label.set_text("Status: Uploading %s..." % status_text)
