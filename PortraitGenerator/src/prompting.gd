@@ -319,7 +319,7 @@ func to_simple_color(skin_color):
         'human2': 'light',
         'human3': 'light brown',
         'human4': 'bronze',
-        'human5': 'chocolate',
+        'human5': 'ebony',
         'dark1': 'dark grey',
         'dark2': 'very dark grey',
         'dark3': 'black',
