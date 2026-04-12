@@ -120,9 +120,20 @@ func _init():
     _FilterableDropdownScript = load(MOD_PATH + "/scenes/FilterableDropdown.gd")
 
     # Customize input field colors on our cloned theme
-    MAIN_THEME.set_color('clear_button_color', 'LineEdit', Color(0, 0, 0, 1))
-    MAIN_THEME.set_color('cursor_color', 'LineEdit', Color(0, 0, 0, 0.9))
-    MAIN_THEME.set_color('font_color_uneditable', 'LineEdit', Color(0, 0, 0, 0.8))
+    var style_dir = MOD_PATH + "/resources/styles"
+    var style_inactive = load(style_dir + "/text_edit_inactive.tres")
+    var style_active = load(style_dir + "/text_edit_active.tres")
+    if style_inactive:
+        MAIN_THEME.set_stylebox("normal", "LineEdit", style_inactive)
+        MAIN_THEME.set_stylebox("read_only", "LineEdit", style_inactive)
+    if style_active:
+        MAIN_THEME.set_stylebox("focus", "LineEdit", style_active)
+    MAIN_THEME.set_color('font_color', 'LineEdit', Color(1, 1, 1, 1))
+    MAIN_THEME.set_color('selection_color', 'LineEdit', Color(1, 0.95, 0.8, 0.8))
+    MAIN_THEME.set_color('cursor_color', 'LineEdit', Color(1, 1, 1, 1))
+    MAIN_THEME.set_color('clear_button_color', 'LineEdit', Color(1, 1, 1, 1))
+    MAIN_THEME.set_color('font_color_uneditable', 'LineEdit', Color(1, 1, 1, 0.6))
+    theme = MAIN_THEME
 
     # Add prompting button below Talk
     var prompting_button = _build_prompting_button()
