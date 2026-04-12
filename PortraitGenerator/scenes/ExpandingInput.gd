@@ -53,9 +53,9 @@ func _load_styles(mod_path):
         _text_edit.add_stylebox_override("read_only", _style_inactive)
     if _style_active:
         _text_edit.add_stylebox_override("focus", _style_active)
-    _text_edit.add_color_override("font_color", Color(0.1, 0.05, 0.08, 1))
+    _text_edit.add_color_override("font_color", Color(1, 1, 1, 1))
     _text_edit.add_color_override("selection_color", Color(0.5, 0.4, 0.2, 0.7))
-    _text_edit.add_color_override("cursor_color", Color(0, 0, 0))
+    _text_edit.add_color_override("cursor_color", Color(1, 1, 1, 1))
 
 # --- Focus lifecycle ---
 
