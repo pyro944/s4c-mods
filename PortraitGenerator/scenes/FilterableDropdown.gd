@@ -19,6 +19,7 @@ var selected_item = ""
 var _items = []
 var _item_list = null
 var _max_visible = 50
+var _item_height = 28
 
 func setup(mod_path):
     _item_list = $PanelContainer/ItemList
@@ -58,9 +59,15 @@ func filter(query, anchor_control = null):
 func show_below(control):
     if _item_list.get_item_count() == 0:
         return
+    var style = $PanelContainer.get_stylebox("panel")
+    var chrome_height = 14
+    if style != null:
+        chrome_height += int(style.get_margin(MARGIN_TOP) + style.get_margin(MARGIN_BOTTOM))
+
     var rect = control.get_global_rect()
-    var popup_size = Vector2(rect.size.x, min(_item_list.get_item_count() * 28, 200))
-    popup(Rect2(Vector2(rect.position.x, rect.position.y + rect.size.y), popup_size))
+    var visible_rows = _item_list.get_item_count()
+    var popup_height = min(visible_rows * _item_height + chrome_height, 220)
+    popup(Rect2(Vector2(rect.position.x, rect.position.y + rect.size.y), Vector2(rect.size.x, popup_height)))
 
 func _on_item_selected(index):
     var item_idx = _item_list.get_item_metadata(index)
