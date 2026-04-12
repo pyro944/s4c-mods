@@ -106,6 +106,31 @@ Clicking any of the "New" options will produce a fresh image totally independent
 
 Feel free to edit the prompts as you see fit. The game will not overwrite them unless you press the "Generate" button again.
 
+### UI Details
+
+![Image of the UI with elements numbered](docs/ui-elements.png)
+
+1. **Positive prompt**: Enter anything you'd like to apply to every prompt. This is a good place to specify things like style and framing.
+2. **Clothing description**: Enter what you'd like your character to be wearing in clothed images.
+3. **From equipment**: Press this button to load a description of what the character currently has equipped.
+4. **Negative prompt**: Enter terms that you'd like the image generation to avoid.
+5. **Generate Prompts**: Press this generate prompts based on what you've entered and the character's physical stats. This will populate the prompt outputs right below it.
+6. **Prompt outputs**: These are the prompts that will be used to generate your character's portraits. You can modify them however you like. Every time you press the "Generate Prompts" button, these will be completely regenerated.
+7. **Copy icons**: Click one of these icons to quickly copy its corresponding prompt to your clipboard.
+8. **ComfyUI Server**: Enter the address and port of your ComfyUI server.
+9. **Connect/Disconnect**: Click this button to connect to or disconnect from the ComfyUI server.
+10. **Model**: Select the model to use for image generation. You must be connected to a ComfyUI server to access this list.
+11. **Steps**: Number of steps to use in image generation.
+12. **CFG**: Classifier-Free Guidance scale, used to control the level of freedom in generation. Higher numbers mean stricter adherence to your prompts.
+13. **Denoise**: Strength of denoising for image-to-image workflows. **0.0** is identical to the source image and **1.0** is completely different. For nude generation, you'll probably want this around **0.9**. For pregnant images, **0.6** is usually effective.
+14. **Width**: Width, in pixels, of the generated image.
+15. **Height**: Height, in pixels, of the generated image.
+16. **Workflow settings...**: Open the workflow settings panel (see below).
+17. **New \* buttons**: Generate a new image based on the prompts.
+18. **\* from \* buttons**: Generate a new image based on both the prompts and a source image.
+19. **Portrait from \* buttons**: Crop the source image to a square portrait.
+20. **Fetch last**: Show the last image that was generated again.
+
 ### Advanced usage
 
 ![The workflow settings panel](docs/workflow-settings.png)

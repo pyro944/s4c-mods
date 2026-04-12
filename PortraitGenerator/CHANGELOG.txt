@@ -63,3 +63,13 @@
 - Add img2img workflow that tries to maintain the character's face (`preserve-face`).
 - Fix various behavior issues with the expandable prompt inputs.
 - Add a "Fetch last" button to the UI to help when ComfyUI doesn't return images properly.
+
+1.1.6
+- Support generating clothed body from nude. Note that due to the way the game
+  looks up alternate portraits, you will only be able to do this if the
+  character already has a body image.
+- Clean up input control colors for better readability.
+- Small tweaks to prompt wording and weights.
+- Bug fixes: LoRA dropdown could be too small, main panel was overlapping
+  character portrait and body somewhat, skin color could be incorrect for
+  characters with scales (like Dragonkin).
