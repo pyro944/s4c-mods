@@ -79,7 +79,8 @@
       "output_height": ["10", 1],
       "padding": 0,
       "image": ["1", 0],
-      "bboxes": ["18", 0]
+      "bboxes": ["18", 0],
+      "keep_aspect": "stretch"
     },
     "class_type": "CropByBBoxes",
     "_meta": {
