@@ -73,3 +73,7 @@
 - Bug fixes: LoRA dropdown could be too small, main panel was overlapping
   character portrait and body somewhat, skin color could be incorrect for
   characters with scales (like Dragonkin).
+
+1.1.7
+- Fix: Support the new interface for CropByBBoxes in ComfyUI 0.19.0.
+- Adjust human skin tone prompts.
