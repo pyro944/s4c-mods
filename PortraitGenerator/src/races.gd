@@ -155,12 +155,12 @@ var _ATTRIBUTES = {
         'body': [],
         'skin': 'skin',
         'negative': ['headband', 'human ears'],
-        'personal_descriptor': '(half rabbit  $PERSON:1.2)',
+        'personal_descriptor': '(half rabbit $PERSON:1.2)',
     },
     'HalfkinCat': {
         'body': [],
         'skin': 'skin',
-        'negative': ['cat ears'],
+        'negative': ['human ears'],
         'personal_descriptor': '(half cat $PERSON:1.2)',
     },
     'HalfkinFox': {

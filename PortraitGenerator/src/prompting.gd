@@ -313,7 +313,7 @@ func genitals_tags(penis_type, penis_size, skin_color):
         return ['%s %s %s penis' % [penis_size, to_simple_color(skin_color), penis_type]]
     return ['vulva']
 
-func to_simple_color(skin_color):
+func to_simple_color(color):
     var translated_color = {
         'human1': 'fair',
         'human2': 'light',
@@ -328,11 +328,11 @@ func to_simple_color(skin_color):
         'dark_1': 'dark grey',
         'dark_2': 'very dark grey',
         'dark_3': 'black'
-    }.get(skin_color, null)
+    }.get(color, null)
     if translated_color:
         return translated_color
 
-    return to_alpha(skin_color)
+    return to_alpha(color or "")
     
 func to_alpha(value):
     if _alpha_regex == null:
