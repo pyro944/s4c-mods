@@ -80,3 +80,7 @@
 
 1.1.8
 - Fix: Remove tool slot that was replaced in 0.14.3
+
+1.1.9
+- Fix: Body parts without a color would throw an error
+- Fix: Cat ears were in the negative prompt for halfkin cats
